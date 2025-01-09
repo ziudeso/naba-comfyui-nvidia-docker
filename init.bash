@@ -16,8 +16,9 @@ echo "== Running ${script_name} in ${script_dir} as ${whoami}"
 script_fullname=$0
 cmd_wuid=$1
 cmd_wgid=$2
-cmd_cmdline_base=$3
-cmd_cmdline_xtra=$4
+cmd_seclvl=$3
+cmd_cmdline_base=$4
+cmd_cmdline_xtra=$5
 
 # everyone can read our files by default
 umask 0022
@@ -57,6 +58,9 @@ if [ -z "$WANTED_UID" ]; then echo "-- No WANTED_UID provided, using comfy user 
 if [ -z "$WANTED_GID" ]; then WANTED_GID=$cmd_wgid; fi
 if [ -z "$WANTED_GID" ]; then echo "-- No WANTED_GID provided, using comfy user default of 1024"; WANTED_GID=1024; fi
 
+if [ -z "$SECURITY_LEVEL" ]; then SECURITY_LEVEL=$cmd_seclvl; fi
+if [ -z "$SECURITY_LEVEL" ]; then echo "-- No SECURITY_LEVEL provided, using comfy default of normal"; SECURITY_LEVEL="normal"; fi
+
 # The script is started as comfy
 # if the UID/GID are not correct, we create a new comfytoo user with the correct UID/GID which will restart the script
 # after the script restart we restart again as comfy
@@ -65,7 +69,7 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   # Make the comfy user (the Docker USER) have the proper UID/GID as well
   sudo usermod -u ${WANTED_UID} -o -g ${WANTED_GID} comfy
   # restart the script as comfy (Docker USER) with the correct UID/GID this time
-  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
+  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
 fi
 
 it=/etc/image_base.txt
@@ -100,7 +104,7 @@ if [ $do_change == "True" ]; then
   sudo useradd -u ${WANTED_UID} -o -g ${WANTED_GID} -s /bin/bash -d ${COMFYUSER_DIR} -M comfytoo
   sudo adduser comfytoo sudo
   # Reload the script to bypass limitation (and exit)
-  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
+  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
 fi
 
 new_gid=`id -g`
@@ -181,8 +185,8 @@ if [ ! -f $cm_conf ]; then
   echo "== ComfyUI-Manager $cm_conf file missing, script potentially never run before. You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet -- if this keeps occurring, please let the developer know so he can investigate. Thank you"
 else
   echo "  -- Using ComfyUI-Manager config file: $cm_conf"
-  perl -p -i -e "s%security_level = \w+%security_level = weak%g" $cm_conf
-  echo -n "  -- ComfyUI-Manager (should show 'weak'): "
+  perl -p -i -e 's%security_level = \w+%security_level = '${SECURITY_LEVEL}'%g' $cm_conf
+  echo -n "  -- ComfyUI-Manager (should show: ${SECURITY_LEVEL}): "
   grep security_level $cm_conf
 fi
 

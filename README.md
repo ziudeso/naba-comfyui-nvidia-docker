@@ -12,7 +12,7 @@ You will know the ComfyUI WebUI is running when you check the `docker logs` and 
 **About 10GB of space is needed between the container and the virtual environment additional installation.**
 This does not take into account the models and other additional packages installation that the end user might perform.
 
-**It is required to re-run the container after first installation to enable the change to the ComfyUI Manager `security_leval` (we run it within a container, as such we need to expose the WebUI to 0.0.0.0). Without this step, the tool will be unable to update/install content.**
+**ComfyUI's `security_levels` are not accessible until the configuration file is created during the first run.**
 
 It is recommended to have a container monitoring tool available to watch the logs and see when installation are completed, or other relevant messages:
 some updates will take a long time (updating packages, downloading content, ...) and the lack of updates on the WebUI is not a sign of failure.
@@ -38,7 +38,7 @@ some updates will take a long time (updating packages, downloading content, ...)
   - [5.3. Available environment variables](#53-available-environment-variables)
     - [5.3.1. WANTED\_UID and WANTED\_GID](#531-wanted_uid-and-wanted_gid)
     - [5.3.2. COMFY\_CMDLINE\_BASE and COMFY\_CMDLINE\_XTRA](#532-comfy_cmdline_base-and-comfy_cmdline_xtra)
-  - [5.4. ComfyUI Manager](#54-comfyui-manager)
+  - [5.4. ComfyUI Manager \& Security levels](#54-comfyui-manager--security-levels)
   - [5.5. Additional FAQ](#55-additional-faq)
 - [6. Troubleshooting](#6-troubleshooting)
 - [7. Changelog](#7-changelog)
@@ -79,7 +79,7 @@ When starting the container image starts the `init.bash` script that performs a 
 - Activate this virtual environment
 - Install all the ComfyUI required python package. If those are already present, it should not need to download additional content.
 - Installing ComfyUI-Manager if it is not present.
-  - During additional runs, we will change the `security_level` to allow for the tool to be fully functional
+  - During additional runs, we will allow the user to change the `security_level` from `normal` to another value (see the "Security Levels" section of this document for details) to allow for the tool grant more of less functionalities
 - Check for a user custom script in the "run" directory. It must be named `user_script.bash`. If one exists, run it.
 - Run the ComfyUI WebUI. For the exact command run, please see the last line of `init.bash`
 
@@ -89,7 +89,7 @@ When starting the container image starts the `init.bash` script that performs a 
 To run the container on an NVIDIA GPU, mounting the specified directory, exposing the port 8188 (change this by altering the `-p local:container` port mapping) and passing the calling user's UID and GID to the container:
 
 ```bash
-docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -p 8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e SECURITY_LEVEL=normal -p 8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
 ```
 
 ## 2.2. Docker compose
@@ -109,6 +109,7 @@ services:
     environment:
       - WANTED_UID=1000
       - WANTED_GID=1000
+      - SECURITY_LEVEL=normal
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
     deploy:
@@ -298,17 +299,22 @@ DEBIAN_FRONTEND=noninteractive sudo apt-get install -y libgl1 libglib2.0-0
 exit 0
 ```
 
-## 5.4. ComfyUI Manager
+Note that `pip install`ation of custom nodes is not possible in `normal` security level and `weak` should be used (see the "Security levels" section for details)
+
+## 5.4. ComfyUI Manager & Security levels
 
 [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager/) is installed and available in the container.
 
 The container to be accessible runs on `0.0.0.0` internally (ie all network interfaces).
-Docker takes care of exposing the port and control the access.
-When using ComfyUI Manager, this means that the security scan settings has to be lowered to be able to be able to `Install PIP packages` for example.
+When following the rules defined at https://github.com/ltdrdata/ComfyUI-Manager?tab=readme-ov-file#security-policy the user should decide if `normal` will work for their use case. 
+If you manually install or alter custom nodes, you will prefer `weak`.
+**WARNING: Using `normal-` will prevent acess to the WebUI.**
 
-To do this:
-- manually: by going in your "run" folder directory and edit `custom_nodes/ComfyUI-Manager/config.ini` and use the following `security_level = weak` (then reload ComfyUI)
-- automatically: stop and restart the container; the `config.ini` was not present at first run but will be there at consecutive restarts
+To modify the `security_level`:
+- manually: by going in your "run" folder directory and edit either `ComfyUI/user/default/ComfyUI-Manager/config.ini` if present, otherwise `custom_nodes/ComfyUI-Manager/config.ini` and alter the `security_level = ` to match your requirements (then reload ComfyUI)
+- automatically: use the `SECURITY_LEVEL` docker environment variable at run time to set it for this run.
+
+Note that if this is the first time starting the container, the file will not yet exist; it is created the first time ComfyUI is run. After this step, stop and restart the container; the `config.ini` will be there at consecutive restarts
 
 To use `cm-cli`, from the virtualenv, use: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py`.
 For example: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py show installed` (`COMFYUI_PATH=/ComfyUI` should be set)

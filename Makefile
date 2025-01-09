@@ -18,7 +18,7 @@ DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
 
 
 DOCKER_BUILD_ARGS=
-DOCKER_BUILD_ARGS="--no-cache"
+#DOCKER_BUILD_ARGS="--no-cache"
 
 # Set to False to make it less verbose
 VERBOSE_PRINT=True
