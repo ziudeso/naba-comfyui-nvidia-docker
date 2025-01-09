@@ -168,13 +168,22 @@ if [ ! -d ComfyUI-Manager ]; then
   git clone https://github.com/ltdrdata/ComfyUI-Manager.git || error_exit "ComfyUI-Manager clone failed"
 fi
 if [ ! -d ComfyUI-Manager ]; then error_exit "ComfyUI-Manager not found"; fi
-cd ComfyUI-Manager
-if [ ! -f config.ini ]; then
-  echo "== You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet"
+
+# Lower security_level for ComfyUI-Manager to allow access from outside the container
+# This is needed to allow the WebUI to be served on 0.0.0.0 ie all interfaces and not just localhost (which would be limited to within the container)
+# Please see https://github.com/ltdrdata/ComfyUI-Manager?tab=readme-ov-file#security-policy for more details
+# 
+# recent releases of ComfyUI-Manager have a config.ini file in the user folder, if this is not present, we expect it in the default folder
+cm_conf_user=/comfy/mnt/ComfyUI/user/default/ComfyUI-Manager/config.ini
+cm_conf=/comfy/mnt/ComfyUI/custom_nodes/ComfyUI-Manager/config.ini
+if [ -f $cm_conf_user ]; then cm_conf=$cm_conf_user; fi
+if [ ! -f $cm_conf ]; then
+  echo "== ComfyUI-Manager $cm_conf file missing, script potentially never run before. You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet -- if this keeps occurring, please let the developer know so he can investigate. Thank you"
 else
-  echo "== Attempting to update ComfyUI-Manager security level (running in a container, we need to expose the WebUI to 0.0.0.0)"
-  perl -p -i -e "s%security_level = normal%security_level = weak%g" config.ini
-  perl -p -i -e "s%security_level = strict%security_level = weak%g" config.ini
+  echo "  -- Using ComfyUI-Manager config file: $cm_conf"
+  perl -p -i -e "s%security_level = \w+%security_level = weak%g" $cm_conf
+  echo -n "  -- ComfyUI-Manager (should show 'weak'): "
+  grep security_level $cm_conf
 fi
 
 cd ${COMFYUI_PATH}

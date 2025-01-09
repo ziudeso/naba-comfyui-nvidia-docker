@@ -6,9 +6,11 @@ DOCKER_CMD=docker
 DOCKER_FROM=nvidia/cuda:12.3.2-runtime-ubuntu22.04
 
 BUILD_DATE=$(shell printf '%(%Y%m%d_%H%M)T' -1)
+BUILD_FROM=cuda12.3_ubuntu22
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
-NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_DATE}
+BUILD_TAG=${BUILD_FROM}-${BUILD_DATE}
+NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_TAG}
 NAMED_BUILD_LATEST=${COMFYUI_CONTAINER_NAME}:latest
 
 DOCKERFILE=Dockerfile
@@ -16,7 +18,7 @@ DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
 
 
 DOCKER_BUILD_ARGS=
-#DOCKER_BUILD_ARGS="--no-cache"
+DOCKER_BUILD_ARGS="--no-cache"
 
 # Set to False to make it less verbose
 VERBOSE_PRINT=True
@@ -36,7 +38,7 @@ build:
 
 
 latest:
-	@VAR_NT=${COMFYUI_CONTAINER_NAME}-${COMFYUI_VERSION} USED_BUILD=${NAMED_BUILD} USED_BUILD_LATEST=${NAMED_BUILD_LATEST} make build_main_actual
+	@VAR_NT=${COMFYUI_CONTAINER_NAME}-${BUILD_TAG} USED_BUILD=${NAMED_BUILD} USED_BUILD_LATEST=${NAMED_BUILD_LATEST} make build_main_actual
 
 
 build_main_actual:
@@ -77,7 +79,7 @@ docker_tag:
 
 docker_tag_list:
 	@echo "Docker images tagged:"
-	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build=${BUILD_DATE}"
+	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build=${BUILD_TAG}"
 
 docker_push:
 	@make docker_tag
