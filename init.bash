@@ -82,6 +82,12 @@ COMFYUSER_DIR=`cat $it`
 echo "-- COMFYUIUSER_DIR: \"${COMFYUSER_DIR}\""
 if test -z ${COMFYUSER_DIR}; then error_exit "Empty COMFYUSER_DIR variable"; fi
 
+it=/etc/build_base.txt
+if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
+BUILD_BASE=`cat $it`
+echo "-- BUILD_BASE: \"${BUILD_BASE}\""
+if test -z ${BUILD_BASE}; then error_exit "Empty BUILD_BASE variable"; fi
+
 # we are running with some given UID/GID, do we need to modify UID/GID
 current_uid=`id -u`
 current_gid=`id -g`

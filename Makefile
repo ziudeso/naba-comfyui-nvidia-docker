@@ -6,10 +6,10 @@ DOCKER_CMD=docker
 DOCKER_FROM=nvidia/cuda:12.3.2-runtime-ubuntu22.04
 
 BUILD_DATE=$(shell printf '%(%Y%m%d_%H%M)T' -1)
-BUILD_FROM=cuda12.3_ubuntu22
+BUILD_BASE=ubuntu22_cuda12.3
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
-BUILD_TAG=${BUILD_FROM}-${BUILD_DATE}
+BUILD_TAG=${BUILD_BASE}-${BUILD_DATE}
 NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_TAG}
 NAMED_BUILD_LATEST=${COMFYUI_CONTAINER_NAME}:latest
 
@@ -48,6 +48,7 @@ build_main_actual:
 	@echo "  --build-arg DOCKER_FROM=\"${DOCKER_FROM}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BASE_DOCKER_FROM=\"${DOCKER_FROM}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg BUILD_BASE=\"${BUILD_BASE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --tag=\"${USED_BUILD}\" \\" >> ${VAR_NT}.cmd
 	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
