@@ -37,7 +37,7 @@ It is recommended that a container monitoring tool be available to watch the log
   - [5.3. Available environment variables](#53-available-environment-variables)
     - [5.3.1. WANTED\_UID and WANTED\_GID](#531-wanted_uid-and-wanted_gid)
     - [5.3.2. COMFY\_CMDLINE\_BASE and COMFY\_CMDLINE\_XTRA](#532-comfy_cmdline_base-and-comfy_cmdline_xtra)
-    - [SECURITY\_LEVEL](#security_level)
+    - [5.3.3. SECURITY\_LEVEL](#533-security_level)
   - [5.4. ComfyUI Manager \& Security levels](#54-comfyui-manager--security-levels)
   - [5.5. Additional FAQ](#55-additional-faq)
 - [6. Troubleshooting](#6-troubleshooting)
@@ -302,7 +302,7 @@ exit 0
 
 Note that `pip install`ation of custom nodes is not possible in `normal` security level, and `weak` should be used instead (see the "Security levels" section for details)
 
-### SECURITY_LEVEL
+### 5.3.3. SECURITY_LEVEL
 
 After initial run, it is possible to use the `SECURITY_LEVEL` environment variable to alter the default security level imposed by ComfyUI Manager.
 
@@ -340,7 +340,7 @@ The virtual environment will be recreated; any `custom_scripts` should re-instal
 
 # 7. Changelog
 
-- 202501--: Integrated `SECURITY_LEVELS` within the docker arguments + added libGL into the base container.
+- 20250109: Integrated `SECURITY_LEVELS` within the docker arguments + added libGL into the base container.
 - 20240915: Added `COMFY_CMDLINE_BASE` and `COMFY_CMDLINE_XTRA` variable
 - 20240824: Tag 0.2: shift to pull at first run-time, user upgradable with lighter base container
 - 20240824: Tag 0.1: builds were based on ComfyUI release, not user upgradable
