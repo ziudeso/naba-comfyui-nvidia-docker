@@ -49,12 +49,18 @@ RUN apt-get update -y --fix-missing \
     python3-venv \
     git \
     sudo \
+    libgl1 \
+    libglib2.0-0 \
   && apt-get clean
 
 ENV BUILD_FILE="/etc/image_base.txt"
 ARG BASE_DOCKER_FROM
 RUN echo "DOCKER_FROM: ${BASE_DOCKER_FROM}" | tee ${BUILD_FILE}
 RUN echo "CUDNN: ${NV_CUDNN_PACKAGE_NAME} (${NV_CUDNN_VERSION})" | tee -a ${BUILD_FILE}
+
+ARG BUILD_BASE="unknown"
+LABEL comfyui-nvidia-docker-build-from=${BUILD_BASE}
+RUN it="/etc/build_base.txt"; echo ${BUILD_BASE} > $it && chmod 555 $it
 
 ##### ComfyUI preparation
 # The comfy user will have UID 1024 and GID 1024

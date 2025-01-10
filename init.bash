@@ -16,8 +16,9 @@ echo "== Running ${script_name} in ${script_dir} as ${whoami}"
 script_fullname=$0
 cmd_wuid=$1
 cmd_wgid=$2
-cmd_cmdline_base=$3
-cmd_cmdline_xtra=$4
+cmd_seclvl=$3
+cmd_cmdline_base=$4
+cmd_cmdline_xtra=$5
 
 # everyone can read our files by default
 umask 0022
@@ -57,6 +58,9 @@ if [ -z "$WANTED_UID" ]; then echo "-- No WANTED_UID provided, using comfy user 
 if [ -z "$WANTED_GID" ]; then WANTED_GID=$cmd_wgid; fi
 if [ -z "$WANTED_GID" ]; then echo "-- No WANTED_GID provided, using comfy user default of 1024"; WANTED_GID=1024; fi
 
+if [ -z "$SECURITY_LEVEL" ]; then SECURITY_LEVEL=$cmd_seclvl; fi
+if [ -z "$SECURITY_LEVEL" ]; then echo "-- No SECURITY_LEVEL provided, using comfy default of normal"; SECURITY_LEVEL="normal"; fi
+
 # The script is started as comfy
 # if the UID/GID are not correct, we create a new comfytoo user with the correct UID/GID which will restart the script
 # after the script restart we restart again as comfy
@@ -65,7 +69,7 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   # Make the comfy user (the Docker USER) have the proper UID/GID as well
   sudo usermod -u ${WANTED_UID} -o -g ${WANTED_GID} comfy
   # restart the script as comfy (Docker USER) with the correct UID/GID this time
-  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
+  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
 fi
 
 it=/etc/image_base.txt
@@ -77,6 +81,12 @@ if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 COMFYUSER_DIR=`cat $it`
 echo "-- COMFYUIUSER_DIR: \"${COMFYUSER_DIR}\""
 if test -z ${COMFYUSER_DIR}; then error_exit "Empty COMFYUSER_DIR variable"; fi
+
+it=/etc/build_base.txt
+if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
+BUILD_BASE=`cat $it`
+echo "-- BUILD_BASE: \"${BUILD_BASE}\""
+if test -z ${BUILD_BASE}; then error_exit "Empty BUILD_BASE variable"; fi
 
 # we are running with some given UID/GID, do we need to modify UID/GID
 current_uid=`id -u`
@@ -100,7 +110,7 @@ if [ $do_change == "True" ]; then
   sudo useradd -u ${WANTED_UID} -o -g ${WANTED_GID} -s /bin/bash -d ${COMFYUSER_DIR} -M comfytoo
   sudo adduser comfytoo sudo
   # Reload the script to bypass limitation (and exit)
-  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
+  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${cmd_cmdline_base} ${cmd_cmdline_xtra} && exit
 fi
 
 new_gid=`id -g`
@@ -168,13 +178,22 @@ if [ ! -d ComfyUI-Manager ]; then
   git clone https://github.com/ltdrdata/ComfyUI-Manager.git || error_exit "ComfyUI-Manager clone failed"
 fi
 if [ ! -d ComfyUI-Manager ]; then error_exit "ComfyUI-Manager not found"; fi
-cd ComfyUI-Manager
-if [ ! -f config.ini ]; then
-  echo "== You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet"
+
+# Lower security_level for ComfyUI-Manager to allow access from outside the container
+# This is needed to allow the WebUI to be served on 0.0.0.0 ie all interfaces and not just localhost (which would be limited to within the container)
+# Please see https://github.com/ltdrdata/ComfyUI-Manager?tab=readme-ov-file#security-policy for more details
+# 
+# recent releases of ComfyUI-Manager have a config.ini file in the user folder, if this is not present, we expect it in the default folder
+cm_conf_user=/comfy/mnt/ComfyUI/user/default/ComfyUI-Manager/config.ini
+cm_conf=/comfy/mnt/ComfyUI/custom_nodes/ComfyUI-Manager/config.ini
+if [ -f $cm_conf_user ]; then cm_conf=$cm_conf_user; fi
+if [ ! -f $cm_conf ]; then
+  echo "== ComfyUI-Manager $cm_conf file missing, script potentially never run before. You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet -- if this keeps occurring, please let the developer know so he can investigate. Thank you"
 else
-  echo "== Attempting to update ComfyUI-Manager security level (running in a container, we need to expose the WebUI to 0.0.0.0)"
-  perl -p -i -e "s%security_level = normal%security_level = weak%g" config.ini
-  perl -p -i -e "s%security_level = strict%security_level = weak%g" config.ini
+  echo "  -- Using ComfyUI-Manager config file: $cm_conf"
+  perl -p -i -e 's%security_level = \w+%security_level = '${SECURITY_LEVEL}'%g' $cm_conf
+  echo -n "  -- ComfyUI-Manager (should show: ${SECURITY_LEVEL}): "
+  grep security_level $cm_conf
 fi
 
 cd ${COMFYUI_PATH}

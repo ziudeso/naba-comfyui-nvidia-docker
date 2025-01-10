@@ -6,9 +6,11 @@ DOCKER_CMD=docker
 DOCKER_FROM=nvidia/cuda:12.3.2-runtime-ubuntu22.04
 
 BUILD_DATE=$(shell printf '%(%Y%m%d_%H%M)T' -1)
+BUILD_BASE=ubuntu22_cuda12.3
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
-NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_DATE}
+BUILD_TAG=${BUILD_BASE}-latest
+NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_TAG}
 NAMED_BUILD_LATEST=${COMFYUI_CONTAINER_NAME}:latest
 
 DOCKERFILE=Dockerfile
@@ -36,7 +38,7 @@ build:
 
 
 latest:
-	@VAR_NT=${COMFYUI_CONTAINER_NAME}-${COMFYUI_VERSION} USED_BUILD=${NAMED_BUILD} USED_BUILD_LATEST=${NAMED_BUILD_LATEST} make build_main_actual
+	@VAR_NT=${COMFYUI_CONTAINER_NAME}-${BUILD_TAG} USED_BUILD=${NAMED_BUILD} USED_BUILD_LATEST=${NAMED_BUILD_LATEST} make build_main_actual
 
 
 build_main_actual:
@@ -46,6 +48,7 @@ build_main_actual:
 	@echo "  --build-arg DOCKER_FROM=\"${DOCKER_FROM}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BASE_DOCKER_FROM=\"${DOCKER_FROM}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg BUILD_BASE=\"${BUILD_BASE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --tag=\"${USED_BUILD}\" \\" >> ${VAR_NT}.cmd
 	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
@@ -66,6 +69,7 @@ docker_rmi:
 	docker rmi --force ${NAMED_BUILD} ${DOCKERHUB_REPO}/${NAMED_BUILD} ${NAMED_BUILD_LATEST} ${DOCKERHUB_REPO}/${NAMED_BUILD_LATEST}
 
 
+############################################## For maintainer only
 ##### push 
 DOCKERHUB_REPO="mmartial"
 
@@ -77,7 +81,7 @@ docker_tag:
 
 docker_tag_list:
 	@echo "Docker images tagged:"
-	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build=${BUILD_DATE}"
+	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build"
 
 docker_push:
 	@make docker_tag
