@@ -9,7 +9,7 @@ BUILD_DATE=$(shell printf '%(%Y%m%d_%H%M)T' -1)
 BUILD_BASE=ubuntu22_cuda12.3
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
-BUILD_TAG=${BUILD_BASE}-${BUILD_DATE}
+BUILD_TAG=${BUILD_BASE}-latest
 NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_TAG}
 NAMED_BUILD_LATEST=${COMFYUI_CONTAINER_NAME}:latest
 
@@ -69,6 +69,7 @@ docker_rmi:
 	docker rmi --force ${NAMED_BUILD} ${DOCKERHUB_REPO}/${NAMED_BUILD} ${NAMED_BUILD_LATEST} ${DOCKERHUB_REPO}/${NAMED_BUILD_LATEST}
 
 
+############################################## For maintainer only
 ##### push 
 DOCKERHUB_REPO="mmartial"
 
@@ -80,7 +81,7 @@ docker_tag:
 
 docker_tag_list:
 	@echo "Docker images tagged:"
-	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build=${BUILD_TAG}"
+	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build"
 
 docker_push:
 	@make docker_tag
