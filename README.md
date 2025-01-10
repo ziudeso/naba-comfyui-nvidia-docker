@@ -79,14 +79,14 @@ When starting the container image starts the `init.bash` script that performs a 
 - Activate this virtual environment
 - Install all the ComfyUI required python package. If those are already present, it should not need to download additional content.
 - Installing ComfyUI-Manager if it is not present.
-  - During additional runs, we will allow the user to change the `security_level` from `normal` to another value (see the "Security Levels" section of this document for details) to allow for the tool grant more of less functionalities
+  - During additional runs, we will allow the user to change the `security_level` from `normal` to another value set using the `SECURITY_LEVEL` environment passed to the container (see the "Security Levels" section of this document for details) to allow for the tool grant more of less functionalities
 - Check for a user custom script in the "run" directory. It must be named `user_script.bash`. If one exists, run it.
 - Run the ComfyUI WebUI. For the exact command run, please see the last line of `init.bash`
 
 
 ## 2.1. docker run
 
-To run the container on an NVIDIA GPU, mounting the specified directory, exposing the port 8188 (change this by altering the `-p local:container` port mapping) and passing the calling user's UID and GID to the container:
+To run the container on an NVIDIA GPU, mounting the specified directory, exposing the port 8188 (change this by altering the `-p local:container` port mapping), passing the calling user's UID and GID to the container, and selecting the `SECURITY_LEVEL`:
 
 ```bash
 docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e SECURITY_LEVEL=normal -p 8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
