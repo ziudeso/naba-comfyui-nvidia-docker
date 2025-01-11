@@ -85,6 +85,8 @@ if test -z ${COMFYUSER_DIR}; then error_exit "Empty COMFYUSER_DIR variable"; fi
 it=/etc/build_base.txt
 if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 BUILD_BASE=`cat $it`
+BUILD_BASE_FILE=$it
+BUILD_BASE_SPECIAL="ubuntu22_cuda12.3" # this is a special value: when this feature was introduced, will be used to mark exisitng venv if the marker is not present
 echo "-- BUILD_BASE: \"${BUILD_BASE}\""
 if test -z ${BUILD_BASE}; then error_exit "Empty BUILD_BASE variable"; fi
 
@@ -122,6 +124,10 @@ if [ ! -z "$WANTED_UID" -a "$WANTED_UID" != "$new_uid" ]; then echo "Wrong UID (
 # We are now running as comfy
 echo "== Running as comfy"
 
+# Confirm we can write to the user directory
+echo "== Testing write access as the comfy user to the run directory"
+it=${COMFYUSER_DIR}/mnt/.testfile; touch $it && rm -f ${COMFYUSER_DIR}/mnt/.testfile || error_exit "Failed to write to ${COMFYUSER_DIR}/mnt"
+
 # Obtain the latest version of ComfyUI if not already present
 cd ${COMFYUSER_DIR}/mnt
 if [ ! -d "ComfyUI" ]; then
@@ -129,16 +135,55 @@ if [ ! -d "ComfyUI" ]; then
   git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || error_exit "ComfyUI clone failed"
 fi
 
+# Confirm the ComfyUI directory is present and we can write to it
+if [ ! -d "ComfyUI" ]; then error_exit "ComfyUI not found"; fi
+it=ComfyUI/.testfile && rm -f $it || error_exit "Failed to write to ComfyUI directory as the comfy user"
+
 if [ ! -d HF ]; then
   echo "== Creating HF directory"
   mkdir -p HF
 fi
 export HF_HOME=${COMFYUSER_DIR}/mnt/HF
 
+# Confirm the HF directory is present and we can write to it
+if [ ! -d "HF" ]; then error_exit "HF not found"; fi
+it=HF/.testfile && rm -f $it || error_exit "Failed to write to HF directory as the comfy user"
+
+# Attempting to support multiple build bases
+# the venv directory is specific to the build base
+# we are placing a marker file in the venv directory to match it to a build base
+# if the marker is not for container's build base, we rename the venv directory to avoid conflicts
+
+# if a venv is present, confirm we can write to it
+if [ -d "venv" ]; then
+  it=venv/.testfile && rm -f $it || error_exit "Failed to write to venv directory as the comfy user"
+  # use the special value to mark existing venv if the marker is not present
+  it=venv/.build_base.txt; if [ ! -f $it ]; then echo $BUILD_BASE_SPECIAL > $it; fi
+fi
+
+# Check for an existing venv; if present, is it the proper one -- ie does its .build_base.txt match the container's BUILD_BASE_FILE?
+if [ -d venv ]; then
+  it=venv/.build_base.txt
+  venv_bb=`cat $it`
+
+  if cmp --silent $it $BUILD_BASE_FILE; then
+    echo "== venv is for this BUILD_BASE (${BUILD_BASE})"
+  else
+    echo "== venv ($venv_bb) is not for this BUILD_BASE (${BUILD_BASE}), renaming it and seeing if a valid one is present"
+    mv venv venv-${venv_bb} || error_exit "Failed to rename venv to venv-${venv_bb}"
+
+    if [ -d venv-${BUILD_BASE} ]; then
+      echo "== Existing venv (${BUILD_BASE}) found, attempting to use it"
+      mv venv-${BUILD_BASE} venv || error_exit "Failed to rename ven-${BUILD_BASE} to venv"
+    fi
+  fi
+fi
+
 # virtualenv for installation
 if [ ! -d "venv" ]; then
   echo "== Creating virtualenv"
   python3 -m venv venv || error_exit "Virtualenv creation failed"
+  echo $BUILD_BASE > venv/.build_base.txt
 fi
 
 # Activate the virtualenv and upgrade pip
