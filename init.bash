@@ -86,7 +86,7 @@ it=/etc/build_base.txt
 if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 BUILD_BASE=`cat $it`
 BUILD_BASE_FILE=$it
-BUILD_BASE_SPECIAL="ubuntu22_cuda12.3" # this is a special value: when this feature was introduced, will be used to mark exisitng venv if the marker is not present
+BUILD_BASE_SPECIAL="ubuntu22_cuda12.3.2" # this is a special value: when this feature was introduced, will be used to mark exisitng venv if the marker is not present
 echo "-- BUILD_BASE: \"${BUILD_BASE}\""
 if test -z ${BUILD_BASE}; then error_exit "Empty BUILD_BASE variable"; fi
 
@@ -223,14 +223,15 @@ if [ ! -d ComfyUI-Manager ]; then
   git clone https://github.com/ltdrdata/ComfyUI-Manager.git || error_exit "ComfyUI-Manager clone failed"
 fi
 if [ ! -d ComfyUI-Manager ]; then error_exit "ComfyUI-Manager not found"; fi
+pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${COMFYUI_PATH}/custom_nodes/ComfyUI-Manager/requirements.txt || echo "ComfyUI-Manager CLI requirements install/upgrade failed" 
 
 # Lower security_level for ComfyUI-Manager to allow access from outside the container
 # This is needed to allow the WebUI to be served on 0.0.0.0 ie all interfaces and not just localhost (which would be limited to within the container)
 # Please see https://github.com/ltdrdata/ComfyUI-Manager?tab=readme-ov-file#security-policy for more details
 # 
 # recent releases of ComfyUI-Manager have a config.ini file in the user folder, if this is not present, we expect it in the default folder
-cm_conf_user=/comfy/mnt/ComfyUI/user/default/ComfyUI-Manager/config.ini
-cm_conf=/comfy/mnt/ComfyUI/custom_nodes/ComfyUI-Manager/config.ini
+cm_conf_user=${COMFYUI_PATH}/user/default/ComfyUI-Manager/config.ini
+cm_conf=${COMFYUI_PATH}/custom_nodes/ComfyUI-Manager/config.ini
 if [ -f $cm_conf_user ]; then cm_conf=$cm_conf_user; fi
 if [ ! -f $cm_conf ]; then
   echo "== ComfyUI-Manager $cm_conf file missing, script potentially never run before. You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet -- if this keeps occurring, please let the developer know so he can investigate. Thank you"
@@ -241,6 +242,16 @@ else
   grep security_level $cm_conf
 fi
 
+# Attempt to use ComfyUI Manager CLI to fix all installed nodes -- This must be done within the activated virtualenv
+cm_cli=${COMFYUI_PATH}/custom_nodes/ComfyUI-Manager/cm-cli.py
+if [ -f $cm_cli ]; then
+  echo "== Running ComfyUI-Manager CLI to fix installed custom nodes"
+  python3 $cm_cli fix all || echo "ComfyUI-Manager CLI failed -- please run it manually from the WebUI in case a custom node is mising some package"
+else
+  echo "== ComfyUI-Manager CLI not found, skipping"
+fi
+
+# Final steps before running ComfyUI
 cd ${COMFYUI_PATH}
 echo -n "== Container directory: "; pwd
 

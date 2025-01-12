@@ -19,6 +19,7 @@ This adds an expected 5GB of content to the installation. Depending on your inte
 
 Given that `venv` (Python virtual environments) might not be compatible from OS+CUDA-version to version and will create a new `venv` when the current one is not for the expected version.
 **An installation might end up with multiple `venv`-based directory in the `run` folder, as the tool will rename existing unusable ones as "venv-OS+CUDA" (for example `venv-ubuntu22_cuda12.3.2`). In order to support downgrading if needed, the script will not delete previous `version`, and this is currently left to the end-user to remove if not needed**
+Using alernate `venv` means that some installed custom nodes might have an `import dailed` error. We are attempting to make use of [`cm-cli`](https://github.com/ltdrdata/ComfyUI-Manager/blob/main/docs/en/cm-cli.md) before starting ComfyUI. If that fails, start the `Manager -> Custom Nodes Manager`, `Filter` by `Import Failed` and use the `Try fix` button as this will download required pacakges and install those in the used `venv`. A `Restart` and UI reload will be required but this ought to fix issues with the nodes.
 
 You will know the ComfyUI WebUI is running when you check the `docker logs` and see `To see the GUI go to: http://0.0.0.0:8188`
 
@@ -49,6 +50,7 @@ It is recommended that a container monitoring tool be available to watch the log
 - [5. FAQ](#5-faq)
   - [5.1. Virtualenv](#51-virtualenv)
     - [5.1.1. Multiple virtualenv](#511-multiple-virtualenv)
+    - [5.1.2. Fixing Failed Nodes](#512-fixing-failed-nodes)
   - [5.2. user\_script.bash](#52-user_scriptbash)
   - [5.3. Available environment variables](#53-available-environment-variables)
     - [5.3.1. WANTED\_UID and WANTED\_GID](#531-wanted_uid-and-wanted_gid)
@@ -282,6 +284,14 @@ For illustration, let's say we last ran `ubuntu22_cuda12.3.1`, exited the contai
 - the script continues as if there was no `venv` and a new one for `ubuntu24_cuda12.5.1` is created
 
 Because of this, it is possible to have multiple `venv`-based folders in the "run" folder.
+
+### 5.1.2. Fixing Failed Nodes
+
+A side effect of the multiple virtual environment integration is that some installed custom nodes might have an `import failed` error when switching from one OS+CUDA-version to another.
+When the container is initialized we run `cm-cli.py fix all` to attempt to fix for this.
+If this does not resolve the issue, start the `Manager -> Custom Nodes Manager`, `Filter` by `Import Failed` and use the `Try fix` button as this will download required pacakges and install those in the used `venv`. A `Restart` and UI reload will be required but this ought to fix issues with the nodes.
+
+![Import Failed: Try Fix](./assets/ImportFailed-TryFix.png)
 
 ## 5.2. user_script.bash
 
