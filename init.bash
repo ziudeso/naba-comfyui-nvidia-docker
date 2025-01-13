@@ -161,6 +161,7 @@ if [ -d "venv" ]; then
   it=venv/.build_base.txt; if [ ! -f $it ]; then echo $BUILD_BASE_SPECIAL > $it; fi
 fi
 
+SWITCHED_VENV=True # this is a marker to indicate that we have switched to a different venv, which is set unless we re-use the same venv as before (see below)
 # Check for an existing venv; if present, is it the proper one -- ie does its .build_base.txt match the container's BUILD_BASE_FILE?
 if [ -d venv ]; then
   it=venv/.build_base.txt
@@ -168,6 +169,7 @@ if [ -d venv ]; then
 
   if cmp --silent $it $BUILD_BASE_FILE; then
     echo "== venv is for this BUILD_BASE (${BUILD_BASE})"
+    SWITCHED_VENV=False
   else
     echo "== venv ($venv_bb) is not for this BUILD_BASE (${BUILD_BASE}), renaming it and seeing if a valid one is present"
     mv venv venv-${venv_bb} || error_exit "Failed to rename venv to venv-${venv_bb}"
@@ -243,12 +245,17 @@ else
 fi
 
 # Attempt to use ComfyUI Manager CLI to fix all installed nodes -- This must be done within the activated virtualenv
-cm_cli=${COMFYUI_PATH}/custom_nodes/ComfyUI-Manager/cm-cli.py
-if [ -f $cm_cli ]; then
-  echo "== Running ComfyUI-Manager CLI to fix installed custom nodes"
-  python3 $cm_cli fix all || echo "ComfyUI-Manager CLI failed -- please run it manually from the WebUI in case a custom node is mising some package"
-else
-  echo "== ComfyUI-Manager CLI not found, skipping"
+if [ "A${SWITCHED_VENV}" == "AFalse" ]; then
+  echo "== Skipping ComfyUI-Manager CLI fix as we are re-using the same venv as the last execution"
+  echo "  -- If you are experiencing issues with custom nodes, use 'Manager -> Custom Nodes Manager -> Filter: Import Failed -> Try Fix' from the WebUI"
+else 
+  cm_cli=${COMFYUI_PATH}/custom_nodes/ComfyUI-Manager/cm-cli.py
+  if [ -f $cm_cli ]; then
+    echo "== Running ComfyUI-Manager CLI to fix installed custom nodes"
+    python3 $cm_cli fix all || echo "ComfyUI-Manager CLI failed -- in case of issue with custom nodes: use 'Manager -> Custom Nodes Manager -> Filter: Import Failed -> Try Fix' from the WebUI"
+  else
+    echo "== ComfyUI-Manager CLI not found, skipping"
+  fi
 fi
 
 # Final steps before running ComfyUI
