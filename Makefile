@@ -6,7 +6,8 @@ DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
 DOCKER_BUILD_ARGS=
 ##DOCKER_BUILD_ARGS="--no-cache"
 
-BUILD_DATE=$(shell printf '%(%Y%m%d)T' -1)
+#BUILD_DATE=$(shell printf '%(%Y%m%d)T' -1)
+BUILD_DATE=202501wip
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
 
@@ -56,7 +57,6 @@ ${DOCKER_ALL}: ${DOCKERFILE_DIR}
 ###### clean
 
 docker_tag_list:
-	@echo "Docker images tagged:"
 	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build"
 
 docker_buildx_rm:
@@ -75,6 +75,8 @@ docker_rmi:
 	@echo "Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
 	@for i in ${DOCKER_PRESENT}; do docker rmi $$i; done
+	@echo ""; echo " ** Remaining image with the build label:"
+	@make docker_tag_list
 
 
 ############################################### For maintainer only
@@ -86,23 +88,35 @@ LATEST_CANDIDATE=$(shell echo ${COMFYUI_CONTAINER_NAME}:${LATEST_ENTRY})
 docker_tag:
 	@if [ `echo ${DOCKER_PRESENT} | wc -w` -eq 0 ]; then echo "No images to tag"; exit 1; fi
 	@echo "== About to tag:"
-	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; echo "$$i -> $$image_out1"; echo "$$i -> $$image_out2"; done
-	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; echo "${LATEST_CANDIDATE} -> $$image_out"; else echo "Unable to find latest candidate: ${LATEST_CANDIDATE}"; fi
+	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; echo "  ++ $$i -> $$image_out1"; echo "  ++ $$i -> $$image_out2"; done
+	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; echo "  ++ ${LATEST_CANDIDATE} -> $$image_out"; else echo "  -- Unable to find latest candidate: ${LATEST_CANDIDATE}"; fi
 	@echo ""
 	@echo "tagging for hub.docker.com upload -- Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; docker tag $$i $$image_out1; docker tag $$i $$image_out2; done
+	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; docker tag ${LATEST_CANDIDATE} $$image_out; fi
 
-#
-#docker_push:
-#	@make docker_tag
-#	@echo "hub.docker.com upload -- Press Ctl+c within 5 seconds to cancel -- will only work for maintainers"
-#	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
-#	@${DOCKER_CMD} push ${DOCKERHUB_REPO}/${NAMED_BUILD}
-#	@${DOCKER_CMD} push ${DOCKERHUB_REPO}/${NAMED_BUILD_LATEST}
-#
-#docker_rmi_all:
-#	@for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:${i}-${BUILD_DATE}"; echo "** Checking: ${image}"; if docker images | grep -q ${image}; then docker rmi ${image}; fi; done
-#	@for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:${i}-latest"; echo "** Checking: ${image}"; if docker images | grep -q ${image}; then docker rmi ${image}; fi; done
-#	@image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; echo "** Checking: ${image}"; if docker images | grep -q ${image}; then docker rmi ${image}; fi
-#	@make docker_rmi
-#	@make docker_tag_list
+DOCKERHUB_READY=$(shell for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:$$i"; image1=$$image-${BUILD_DATE}; image2=$$image-latest; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image1; then echo $$image1; fi; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image2; then echo $$image2; fi; done)
+DOCKERHUB_READY_LATEST=$(shell image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image; then echo $$image; else echo ""; fi)
+
+
+docker_push:
+	@if [ `echo ${DOCKERHUB_READY} | wc -w` -eq 0 ]; then echo "No images to push"; exit 1; fi
+	@echo "== About to push:"
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do echo "  ++ $$i"; done
+	@echo "pushing to hub.docker.com -- Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do docker push $$i; done
+
+
+docker_rmi_hub:
+	@echo ""; echo " ** Potential images with the build label:"
+	@make docker_tag_list
+	@if [ `echo ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST} | wc -w` -eq 0 ]; then echo "No expected images to delete"; exit 1; fi
+	@echo "== About to delete:"
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do echo "  -- $$i"; done
+	@echo "deleting -- Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do docker rmi $$i; done
+	@echo ""; echo " ** Remaining images with the build label:"
+	@make docker_tag_list
