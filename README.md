@@ -8,14 +8,20 @@ The container size (usually over 4GB) contains the required components on an Ubu
 
 Multiple images are available. The name of the image contains a tag the reflects its core components. For example: `ubuntu24_cuda12.5.1` is based on an Ubuntu 24.04 with CUDA 12.5.1. 
 Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support up to a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and therefore will not be able to run the CUDA 12.4.1 or 12.5.1 versions. 
-Use the `nvidia-smi` command on your system to 
+Use the `nvidia-smi` command on your system to obtain the `CUDA Version:` entry in the produced table's header.
 For more details on drivers capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
 
-The `latest` tag will always point to the most up-to-date build (most recent OS+CUDA). 
-If this version is incompatible with your container runtime, please see the list of alternative builsd from the "Dockerhub" section below.
+The `latest` tag will always point to the most up-to-date build (i.e., the most recent OS+CUDA). 
+If this version is incompatible with your container runtime, please see the list of alternative builds.
 
-During its first run, the container will download ComfyUI from git (into the `run/ComfyUI` folder), create a Python virtual environment (in `run/venv`) for all the Python packages needed by the tool, and install [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) into ComfyUI's `custom_nodes` directory. 
-This adds an expected 5GB of content to the installation. Depending on your internet connection, it takes as much time as necessary to complete.  
+| tag | aka |
+| --- | --- |
+| ubuntu22_cuda12.3.2-latest | |
+| ubuntu22_cuda12.4.1-latest | |
+| ubuntu24_cuda12.5.1-latest | latest |
+
+During its first run, the container will download ComfyUI from `git` (into the `run/ComfyUI` folder), create a Python virtual environment (in `run/venv`) for all the Python packages needed by the tool, and install [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) into ComfyUI's `custom_nodes` directory. 
+This adds about 5GB of content to the installation. Download time depends on your internet connection.
 
 Given that `venv` (Python virtual environments) might not be compatible from OS+CUDA-version to version and will create a new `venv` when the current one is not for the expected version.
 **An installation might end up with multiple `venv`-based directory in the `run` folder, as the tool will rename existing unusable ones as "venv-OS+CUDA" (for example `venv-ubuntu22_cuda12.3.2`). In order to support downgrading if needed, the script will not delete previous `version`, and this is currently left to the end-user to remove if not needed**
@@ -50,7 +56,7 @@ It is recommended that a container monitoring tool be available to watch the log
 - [5. FAQ](#5-faq)
   - [5.1. Virtualenv](#51-virtualenv)
     - [5.1.1. Multiple virtualenv](#511-multiple-virtualenv)
-    - [5.1.2. Fixing Failed Nodes](#512-fixing-failed-nodes)
+    - [5.1.2. Fixing Failed Custom Nodes](#512-fixing-failed-custom-nodes)
   - [5.2. user\_script.bash](#52-user_scriptbash)
   - [5.3. Available environment variables](#53-available-environment-variables)
     - [5.3.1. WANTED\_UID and WANTED\_GID](#531-wanted_uid-and-wanted_gid)
@@ -88,9 +94,12 @@ Among the folders that will be created within `run` are `HF, ComfyUI, venv`
   - `custom_nodes` for additional support nodes, for example ComfyUI-Manager,
   - `models` and all its sub-directories is where `checkpoints`, `clip`, `loras`, `unet`, etc have to be placed.
   - `input` and `output` are where input images will be placed and generated images will end up. 
+  - `user` is where the user's customizations, saved `workflows` (and ComfyUI Manager's configuration) are stored.
 - `venv` is the virtual environment where all the required Python packages for ComfyUI and other additions will be placed. A default ComfyUI package installation requires about 5GB of additional installation in addition to the container itself; those packages will be in this `venv` folder.
 
-When starting t the container image executes the `init.bash` script that performs a few operations:
+**Currently, it is not recommended to volume map folders within the `ComfyUI` folder**. Doing so is likely to prevent proper installation (during the first run) or update, as any volume mapping (`docker ... -v` or `- local_path:container_path` for compose) creates those directories within a directory structure that is not suppoeed to exist at first run.
+
+When starting, the container image executes the `init.bash` script that performs a few operations:
 - Ensure we can use the `WANTED_UID` and `WANTED_GID` as the `comfy` user (the user set to run the container),
 - Obtain the latest version of ComfyUI from GitHub if not already present in the mounted `run` folder.
 - Create the virtual environment (`venv`)  if one does not already exist
@@ -222,14 +231,7 @@ Upon a succesful build completion, we will have a newly created local  `comfyui-
 
 Builds are available on DockerHub at [mmartial/comfyui-nvidia-docker](https://hub.docker.com/r/mmartial/comfyui-nvidia-docker), built from this repository's `Dockerfile`(s).
 
-The following table shows the list of available versions on DockerHub. As discused before, make sure your NVIDIA container runtime supports the proposed CUDA version. This is particularily important if you use the `latest` tag, as it is expected to refer to the most recent OS+CUDA release.
-
-| tag | aka |
-| --- | --- |
-| ubuntu22_cuda12.3.2-latest | |
-| ubuntu22_cuda12.4.1-latest | |
-| ubuntu24_cuda12.5.1-latest | latest |
-
+The table at the top of this document shows the list of available versions on DockerHub. Make sure your NVIDIA container runtime supports the proposed CUDA version. This is particularily important if you use the `latest` tag, as it is expected to refer to the most recent OS+CUDA release.
 
 ## 3.3. Unraid availability
 
@@ -285,7 +287,7 @@ For illustration, let's say we last ran `ubuntu22_cuda12.3.1`, exited the contai
 
 Because of this, it is possible to have multiple `venv`-based folders in the "run" folder.
 
-### 5.1.2. Fixing Failed Nodes
+### 5.1.2. Fixing Failed Custom Nodes
 
 A side effect of the multiple virtual environment integration is that some installed custom nodes might have an `import failed` error when switching from one OS+CUDA-version to another.
 When the container is initialized we run `cm-cli.py fix all` to attempt to fix for this.
@@ -413,8 +415,10 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 # 6. Troubleshooting
 
 The `venv` in the "run" directory contains all the required Python packages used by the tool.
-In case of an issue, it is recommended that you terminate the container, delete the `venv` directory, and restart the container. 
-The virtual environment will be recreated; any `custom_scripts` should re-install their requirements.
+In case of an issue, it is recommended that you terminate the container, delete (or rename) the `venv` directory, and restart the container. 
+The virtual environment will be recreated; any `custom_scripts` should re-install their requirements; please see the "Fixing Failed Custom Nodes" section for additional details.
+
+It is also possible to rename the entire "run" directory for get a clean installation of ComfyUI and its virtual environment. This method is preferred --compared to deleting the "run" directory-- as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs` and other folder present within the old "run" directory.
 
 # 7. Changelog
 
