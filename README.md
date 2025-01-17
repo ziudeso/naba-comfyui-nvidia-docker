@@ -63,7 +63,8 @@ It is recommended that a container monitoring tool be available to watch the log
     - [5.3.2. COMFY\_CMDLINE\_BASE and COMFY\_CMDLINE\_XTRA](#532-comfy_cmdline_base-and-comfy_cmdline_xtra)
     - [5.3.3. SECURITY\_LEVEL](#533-security_level)
   - [5.4. ComfyUI Manager \& Security levels](#54-comfyui-manager--security-levels)
-  - [5.5. Additional FAQ](#55-additional-faq)
+  - [5.5. Shell within the Docker image](#55-shell-within-the-docker-image)
+  - [5.6. Additional FAQ](#56-additional-faq)
 - [6. Troubleshooting](#6-troubleshooting)
 - [7. Changelog](#7-changelog)
 
@@ -405,7 +406,11 @@ Note that if this is the first time starting the container, the file will not ye
 To use `cm-cli`, from the virtualenv, use: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py`.
 For example: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py show installed` (`COMFYUI_PATH=/ComfyUI` should be set)
 
-## 5.5. Additional FAQ
+## 5.5. Shell within the Docker image
+
+Depending on your `WANTED_UID` and `WANTED_GID`, when starting a `docker exec` (or getting a ba`bash` terminal from `docker compose`) it is possible that ythe shell is stared with incorrect permissions (we will see a `bash: /comfy/.bashrc: Permission denied` error). The `comfy` user is `sudo`-able: run `sudo su comfytoo` to get the proper UID/GID.
+
+## 5.6. Additional FAQ
 
 See [extras/FAQ.md] for additional FAQ topics, among which:
 - Updating ComfyUI
@@ -422,7 +427,8 @@ It is also possible to rename the entire "run" directory for get a clean install
 
 # 7. Changelog
 
-- 20250109: Integrated `SECURITY_LEVELS` within the docker arguments + added libGL into the base container.
+- 20250116: Happy 2nd Birthday ComfyUI -- added multiple builds for different base Ubuntu OS and CUDA combinations + added `ffmpeg`  into the base container.
+- 20250109: Integrated `SECURITY_LEVELS` within the docker arguments + added `libGL` into the base container.
 - 20240915: Added `COMFY_CMDLINE_BASE` and `COMFY_CMDLINE_XTRA` variable
 - 20240824: Tag 0.2: shift to pull at first run-time, user upgradable with lighter base container
 - 20240824: Tag 0.1: builds were based on ComfyUI release, not user upgradable
