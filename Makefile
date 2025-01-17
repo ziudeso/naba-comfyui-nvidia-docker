@@ -2,90 +2,121 @@ SHELL := /bin/bash
 .PHONY: all
 
 DOCKER_CMD=docker
+DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
+DOCKER_BUILD_ARGS=
+##DOCKER_BUILD_ARGS="--no-cache"
 
-DOCKER_FROM=nvidia/cuda:12.3.2-runtime-ubuntu22.04
-
-BUILD_DATE=$(shell printf '%(%Y%m%d_%H%M)T' -1)
-BUILD_BASE=ubuntu22_cuda12.3
+#BUILD_DATE=$(shell printf '%(%Y%m%d)T' -1)
+BUILD_DATE=20250116
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
-BUILD_TAG=${BUILD_BASE}-latest
-NAMED_BUILD=${COMFYUI_CONTAINER_NAME}:${BUILD_TAG}
-NAMED_BUILD_LATEST=${COMFYUI_CONTAINER_NAME}:latest
 
-DOCKERFILE=Dockerfile
-DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
+COMPONENTS_DIR=components
+DOCKERFILE_DIR=Dockerfile
 
-
-DOCKER_BUILD_ARGS=
-#DOCKER_BUILD_ARGS="--no-cache"
-
-# Set to False to make it less verbose
-VERBOSE_PRINT=True
-
-#####
+# Get the list of all the base- files in COMPONENTS_DIR
+DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | sort)
 
 all:
-	@echo "** Available Docker images to be built (make targets):"
-	@echo "latest:          builds ${NAMED_BUILD} and tags it as ${NAMED_BUILD_LATEST}"
+	@if [ `echo ${DOCKER_ALL} | wc -w` -eq 0 ]; then echo "No images candidates to build"; exit 1; fi
+	@echo "Available ${COMFYUI_CONTAINER_NAME} ${DOCKER_CMD} images to be built (make targets):"
+	@echo -n "      "; echo ${DOCKER_ALL} | sed -e 's/ /\n      /g'
 	@echo ""
-	@echo "build:          builds latest"
+	@echo "build:          builds all"
 
-##### latest
+build: ${DOCKER_ALL}
 
-build:
-	@make latest
+${DOCKERFILE_DIR}:
+	@mkdir -p ${DOCKERFILE_DIR}
 
-
-latest:
-	@VAR_NT=${COMFYUI_CONTAINER_NAME}-${BUILD_TAG} USED_BUILD=${NAMED_BUILD} USED_BUILD_LATEST=${NAMED_BUILD_LATEST} make build_main_actual
-
-
-build_main_actual:
-	@echo "== [${USED_BUILD}] =="
+${DOCKER_ALL}: ${DOCKERFILE_DIR}
+	@echo ""; echo ""; echo "===== Building ${COMFYUI_CONTAINER_NAME}:$@"
+	@cat ${COMPONENTS_DIR}/base-$@ > ${DOCKERFILE_DIR}/Dockerfile-$@
+	@cat ${COMPONENTS_DIR}/part1-common >> ${DOCKERFILE_DIR}/Dockerfile-$@
+	@$(eval VAR_NT="${COMFYUI_CONTAINER_NAME}-$@")
 	@echo "-- Docker command to be run:"
-	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain --platform linux/amd64 ${DOCKER_BUILD_ARGS} \\" > ${VAR_NT}.cmd
-	@echo "  --build-arg DOCKER_FROM=\"${DOCKER_FROM}\" \\" >> ${VAR_NT}.cmd
-	@echo "  --build-arg BASE_DOCKER_FROM=\"${DOCKER_FROM}\" \\" >> ${VAR_NT}.cmd
+	@echo "docker buildx ls | grep -q ${COMFYUI_CONTAINER_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${COMFYUI_CONTAINER_NAME}\" || docker buildx create --name ${COMFYUI_CONTAINER_NAME}"  > ${VAR_NT}.cmd
+	@echo "docker buildx use ${COMFYUI_CONTAINER_NAME} || exit 1" >> ${VAR_NT}.cmd
+	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain --platform linux/amd64 ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\" >> ${VAR_NT}.cmd
-	@echo "  --build-arg BUILD_BASE=\"${BUILD_BASE}\" \\" >> ${VAR_NT}.cmd
-	@echo "  --tag=\"${USED_BUILD}\" \\" >> ${VAR_NT}.cmd
-	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg BUILD_BASE=\"$@\" \\" >> ${VAR_NT}.cmd
+	@echo "  --tag=\"${COMFYUI_CONTAINER_NAME}:$@\" \\" >> ${VAR_NT}.cmd
+	@echo "  -f ${DOCKERFILE_DIR}/Dockerfile-$@ \\" >> ${VAR_NT}.cmd
+	@echo "  --load \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
-
 	@cat ${VAR_NT}.cmd | tee ${VAR_NT}.log.temp
+	@echo "" | tee -a ${VAR_NT}.log.temp
+	@echo "Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+# Actual build
 	@chmod +x ./${VAR_NT}.cmd
 	@script -a -e -c ./${VAR_NT}.cmd ${VAR_NT}.log.temp; exit "$${PIPESTATUS[0]}"
-
 	@mv ${VAR_NT}.log.temp ${VAR_NT}.log
 	@rm -f ./${VAR_NT}.cmd
 
-	@${DOCKER_CMD} tag ${USED_BUILD} ${USED_BUILD_LATEST}
-
-
-##### clean
-
-docker_rmi:
-	docker rmi --force ${NAMED_BUILD} ${DOCKERHUB_REPO}/${NAMED_BUILD} ${NAMED_BUILD_LATEST} ${DOCKERHUB_REPO}/${NAMED_BUILD_LATEST}
-
-
-############################################## For maintainer only
-##### push 
-DOCKERHUB_REPO="mmartial"
-
-docker_tag:
-	@make latest
-	@${DOCKER_CMD} tag ${NAMED_BUILD} ${DOCKERHUB_REPO}/${NAMED_BUILD}
-	@${DOCKER_CMD} tag ${NAMED_BUILD_LATEST} ${DOCKERHUB_REPO}/${NAMED_BUILD_LATEST}
-	@make docker_tag_list
+###### clean
 
 docker_tag_list:
-	@echo "Docker images tagged:"
 	@${DOCKER_CMD} images --filter "label=comfyui-nvidia-docker-build"
 
-docker_push:
-	@make docker_tag
-	@echo "hub.docker.com upload -- Press Ctl+c within 5 seconds to cancel -- will only work for maintainers"
+docker_buildx_rm:
+	@docker buildx rm ${COMFYUI_CONTAINER_NAME}
+
+# Get the list of all existing Docker images
+DOCKERHUB_REPO="mmartial"
+DOCKER_PRESENT=$(shell for i in ${DOCKER_ALL}; do image="${COMFYUI_CONTAINER_NAME}:$$i"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -v ${DOCKERHUB_REPO} | grep -q $$image; then echo $$image; fi; done)
+
+docker_rmi:
+	@echo -n "== Images to delete: "
+	@echo ${DOCKER_PRESENT} | wc -w
+	@if [ `echo ${DOCKER_PRESENT} | wc -w` -eq 0 ]; then echo "No images to delete"; exit 1; fi
+	@echo ${DOCKER_PRESENT} | sed -e 's/ /\n/g'
+	@echo ""
+	@echo "Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
-	@${DOCKER_CMD} push ${DOCKERHUB_REPO}/${NAMED_BUILD}
-	@${DOCKER_CMD} push ${DOCKERHUB_REPO}/${NAMED_BUILD_LATEST}
+	@for i in ${DOCKER_PRESENT}; do docker rmi $$i; done
+	@echo ""; echo " ** Remaining image with the build label:"
+	@make docker_tag_list
+
+
+############################################### For maintainer only
+###### push -- will only proceed with existing ("present") images
+
+LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -1)
+LATEST_CANDIDATE=$(shell echo ${COMFYUI_CONTAINER_NAME}:${LATEST_ENTRY})
+
+docker_tag:
+	@if [ `echo ${DOCKER_PRESENT} | wc -w` -eq 0 ]; then echo "No images to tag"; exit 1; fi
+	@echo "== About to tag:"
+	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; echo "  ++ $$i -> $$image_out1"; echo "  ++ $$i -> $$image_out2"; done
+	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; echo "  ++ ${LATEST_CANDIDATE} -> $$image_out"; else echo "  -- Unable to find latest candidate: ${LATEST_CANDIDATE}"; fi
+	@echo ""
+	@echo "tagging for hub.docker.com upload -- Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; docker tag $$i $$image_out1; docker tag $$i $$image_out2; done
+	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; docker tag ${LATEST_CANDIDATE} $$image_out; fi
+
+DOCKERHUB_READY=$(shell for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:$$i"; image1=$$image-${BUILD_DATE}; image2=$$image-latest; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image1; then echo $$image1; fi; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image2; then echo $$image2; fi; done)
+DOCKERHUB_READY_LATEST=$(shell image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image; then echo $$image; else echo ""; fi)
+
+
+docker_push:
+	@if [ `echo ${DOCKERHUB_READY} | wc -w` -eq 0 ]; then echo "No images to push"; exit 1; fi
+	@echo "== About to push:"
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do echo "  ++ $$i"; done
+	@echo "pushing to hub.docker.com -- Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do docker push $$i; done
+
+
+docker_rmi_hub:
+	@echo ""; echo " ** Potential images with the build label:"
+	@make docker_tag_list
+	@if [ `echo ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST} | wc -w` -eq 0 ]; then echo "No expected images to delete"; exit 1; fi
+	@echo "== About to delete:"
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do echo "  -- $$i"; done
+	@echo "deleting -- Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do docker rmi $$i; done
+	@echo ""; echo " ** Remaining images with the build label:"
+	@make docker_tag_list

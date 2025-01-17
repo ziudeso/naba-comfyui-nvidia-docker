@@ -1,19 +1,18 @@
-ARG DOCKER_FROM=nvidia/cuda:12.3.2-runtime-ubuntu22.04
-FROM ${DOCKER_FROM}
+FROM nvidia/cuda:12.5.1-runtime-ubuntu24.04
 
-# Adapted from https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.2.2/ubuntu2204/devel/cudnn8/Dockerfile
-ENV NV_CUDNN_VERSION=8.9.7.29
-ENV NV_CUDNN_PACKAGE_NAME="libcudnn8"
-ENV NV_CUDA_ADD=cuda12.2
-ENV NV_CUDNN_PACKAGE="$NV_CUDNN_PACKAGE_NAME=$NV_CUDNN_VERSION-1+$NV_CUDA_ADD"
-ENV NV_CUDNN_PACKAGE_DEV="$NV_CUDNN_PACKAGE_NAME-dev=$NV_CUDNN_VERSION-1+$NV_CUDA_ADD"
+# Extended from https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.5.1/ubuntu2404/runtime/Dockerfile
+ENV NV_CUDNN_VERSION=9.3.0.75-1
+ENV NV_CUDNN_PACKAGE_NAME="libcudnn9"
+ENV NV_CUDA_ADD=cuda-12
+ENV NV_CUDNN_PACKAGE="$NV_CUDNN_PACKAGE_NAME-$NV_CUDA_ADD=$NV_CUDNN_VERSION"
+
 LABEL com.nvidia.cudnn.version="${NV_CUDNN_VERSION}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ${NV_CUDNN_PACKAGE} \
-    ${NV_CUDNN_PACKAGE_DEV} \
-    && apt-mark hold ${NV_CUDNN_PACKAGE_NAME} \
-    && rm -rf /var/lib/apt/lists/*
+  ${NV_CUDNN_PACKAGE} \
+  && apt-mark hold ${NV_CUDNN_PACKAGE_NAME}-${NV_CUDA_ADD}
+
+ARG BASE_DOCKER_FROM=nvidia/cuda:12.5.1-runtime-ubuntu24.04
 
 ##### Base
 
@@ -49,8 +48,11 @@ RUN apt-get update -y --fix-missing \
     python3-venv \
     git \
     sudo \
+    # Adding libGL (used by a few common nodes)
     libgl1 \
     libglib2.0-0 \
+    # Adding FFMPEG (for video generation workflow)
+    ffmpeg \
   && apt-get clean
 
 ENV BUILD_FILE="/etc/image_base.txt"
