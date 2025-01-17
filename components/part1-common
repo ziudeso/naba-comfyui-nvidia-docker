@@ -32,8 +32,11 @@ RUN apt-get update -y --fix-missing \
     python3-venv \
     git \
     sudo \
+    # Adding libGL (used by a few common nodes)
     libgl1 \
     libglib2.0-0 \
+    # Adding FFMPEG (for video generation workflow)
+    ffmpeg \
   && apt-get clean
 
 ENV BUILD_FILE="/etc/image_base.txt"
