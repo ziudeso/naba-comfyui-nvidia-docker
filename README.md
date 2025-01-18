@@ -2,14 +2,13 @@
 
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI/tree/master) is a Stable Diffusion WebUI. 
 With the recent addition of a [Flux example](https://comfyanonymous.github.io/ComfyUI_examples/flux/), I created this container builder to test it.
-This container was built to benefit from the process isolation that container build but also to drop the container's ComfyUI privileges to that of a normal user (the container's `comfy` user, which is `sudo` capable).
+This container was built to benefit from the process isolation that containers bring and to drop the container's main process privileges to that of a regular user (the container's `comfy` user, which is `sudo` capable).
 
 The container size (usually over 4GB) contains the required components on an Ubuntu image with Nvidia CUDA and CuDNN (the base container is available from Nvidia's DockerHub); we add the requirements components to support an installation of ComfyUI.
 
-Multiple images are available. The name of the image contains a tag the reflects its core components. For example: `ubuntu24_cuda12.5.1` is based on an Ubuntu 24.04 with CUDA 12.5.1. 
-Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support up to a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and therefore will not be able to run the CUDA 12.4.1 or 12.5.1 versions. 
+Multiple images are available. Each image's name contains a tag reflecting its core components. For example, `ubuntu24_cuda12.5.1` is based on Ubuntu 24.04 with CUDA 12.5.1. Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and will not be able to run the CUDA 12.4.1 or 12.5.1 versions. 
 Use the `nvidia-smi` command on your system to obtain the `CUDA Version:` entry in the produced table's header.
-For more details on drivers capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
+For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
 
 The `latest` tag will always point to the most up-to-date build (i.e., the most recent OS+CUDA). 
 If this version is incompatible with your container runtime, please see the list of alternative builds.
@@ -21,11 +20,11 @@ If this version is incompatible with your container runtime, please see the list
 | ubuntu24_cuda12.5.1-latest | latest |
 
 During its first run, the container will download ComfyUI from `git` (into the `run/ComfyUI` folder), create a Python virtual environment (in `run/venv`) for all the Python packages needed by the tool, and install [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) into ComfyUI's `custom_nodes` directory. 
-This adds about 5GB of content to the installation. Download time depends on your internet connection.
+This adds about 5GB of content to the installation. The download time depends on your internet connection.
 
 Given that `venv` (Python virtual environments) might not be compatible from OS+CUDA-version to version and will create a new `venv` when the current one is not for the expected version.
-**An installation might end up with multiple `venv`-based directory in the `run` folder, as the tool will rename existing unusable ones as "venv-OS+CUDA" (for example `venv-ubuntu22_cuda12.3.2`). In order to support downgrading if needed, the script will not delete previous `version`, and this is currently left to the end-user to remove if not needed**
-Using alernate `venv` means that some installed custom nodes might have an `import dailed` error. We are attempting to make use of [`cm-cli`](https://github.com/ltdrdata/ComfyUI-Manager/blob/main/docs/en/cm-cli.md) before starting ComfyUI. If that fails, start the `Manager -> Custom Nodes Manager`, `Filter` by `Import Failed` and use the `Try fix` button as this will download required pacakges and install those in the used `venv`. A `Restart` and UI reload will be required but this ought to fix issues with the nodes.
+**An installation might end up with multiple `venv`-based directories in the `run` folder, as the tool will rename existing unusable ones as "venv-OS+CUDA" (for example, `venv-ubuntu22_cuda12.3.2`). To support downgrading if needed, the script will not delete the previous version, and this is currently left to the end-user to remove if not needed**
+Using alternate `venv` means that some installed custom nodes might have an `import failed` error. We are attempting to make use of [`cm-cli`](https://github.com/ltdrdata/ComfyUI-Manager/blob/main/docs/en/cm-cli.md) before starting ComfyUI. If that fails, start the `Manager -> Custom Nodes Manager`, `Filter` by `Import Failed`, and use the `Try fix` button as this will download the required packages and install those in the used `venv`. A `Restart` and UI reload will be required to fix issues with the nodes.
 
 You will know the ComfyUI WebUI is running when you check the `docker logs` and see `To see the GUI go to: http://0.0.0.0:8188`
 
@@ -92,19 +91,19 @@ That `run` folder will be populated with a few sub-directories created with the 
 Among the folders that will be created within `run` are `HF, ComfyUI, venv`
 - `HF` is the expected location of the `HF_HOME` (HuggingFace installation directory)
 - `ComfyUI` is the git clone version of the tool, with all its sub-directories, among which:
-  - `custom_nodes` for additional support nodes, for example ComfyUI-Manager,
+  - `custom_nodes` for additional support nodes, for example, ComfyUI-Manager,
   - `models` and all its sub-directories is where `checkpoints`, `clip`, `loras`, `unet`, etc have to be placed.
-  - `input` and `output` are where input images will be placed and generated images will end up. 
-  - `user` is where the user's customizations, saved `workflows` (and ComfyUI Manager's configuration) are stored.
+  - `input` and `output` are where input images will be placed, and generated images will end up. 
+  - `user` is where the user's customizations and saved `workflows` (and ComfyUI Manager's configuration) are stored.
 - `venv` is the virtual environment where all the required Python packages for ComfyUI and other additions will be placed. A default ComfyUI package installation requires about 5GB of additional installation in addition to the container itself; those packages will be in this `venv` folder.
 
-**Currently, it is not recommended to volume map folders within the `ComfyUI` folder**. Doing so is likely to prevent proper installation (during the first run) or update, as any volume mapping (`docker ... -v` or `- local_path:container_path` for compose) creates those directories within a directory structure that is not suppoeed to exist at first run.
+**Currently, it is not recommended to volume map folders within the `ComfyUI` folder**. Doing so is likely to prevent proper installation (during the first run) or update, as any volume mapping (`docker ... -v` or `- local_path:container_path` for compose) creates those directories within a directory structure that is not supposed to exist during the initial execution.
 
 When starting, the container image executes the `init.bash` script that performs a few operations:
 - Ensure we can use the `WANTED_UID` and `WANTED_GID` as the `comfy` user (the user set to run the container),
 - Obtain the latest version of ComfyUI from GitHub if not already present in the mounted `run` folder.
 - Create the virtual environment (`venv`)  if one does not already exist
-  - if one exists confirm it is the one for this OS+CUDA pair
+  - if one exists, confirm it is the one for this OS+CUDA pair
     - if not, rename it and look for a renamed one that would match
     - if none is found, create a new one
 - Activate this virtual environment
@@ -155,7 +154,7 @@ services:
                 - utility
 ```
 
-This will expose on port 8188 (`host:container`), use a `run` directory local to the directory where this `compose.yml`  is, and specify the `WANTED_UID` and `WANTED_GID` to 1000 (adapt as needed). Make sure to create the `run` directory as the user with the wanted uid and gid before running the docker compose for the first time.
+This will use port 8188 (`host:container`). Use a `run` directory local to the directory where this `compose.yml` is, and specify the `WANTED_UID` and `WANTED_GID` to 1000 (adapt as needed). Make sure to create the `run` directory as the user with the desired uid and gid before running the docker-compose for the first time.
 
 Start it with `docker compose up` (with `-detached` to run the container in the background)
 
@@ -173,7 +172,7 @@ The default security model of `normal` is used unless specified, but the needed 
 
 This example requires the [`v1-5-pruned-emaonly.ckpt`](https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt) file which can be downloaded directly from the `Manager`'s "Model Manager".
 
-It is also possible to manually install Stable Diffusion checkpoints, upscale, or Loras (and more) by placing them directly in their respective directories under the `models` folder. For example to manually install the require "bottle example" checkpoint, as the user with the wanted uid/gid:
+It is also possible to manually install Stable Diffusion checkpoints, upscale, or Loras (and more) by placing them directly in their respective directories under the `models` folder. For example, to manually install the required "bottle example" checkpoint, as the user with the wanted uid/gid:
 
 ```bash
 cd <YOUR_RUN_DIRECTORY>/ComfyUI/models/checkpoints
@@ -182,10 +181,10 @@ wget https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pru
 
 After the download is complete, click "Refresh" on the WebUI and "Queue Prompt"
 
-Depending on the workflow, some "cutom nodes" might be needed. Those should usually be available in the "Manager"'s "Install Missing Custom Nodes".
+Depending on the workflow, some "custom nodes" might be needed. Those should usually be available in the "Manager"'s "Install Missing Custom Nodes".
 Other needed files could be found on [HuggingFace](https://huggingface.co/) or [CivitAI](https://civitai.com/).
 
-"Custom nodes" should be installed using the "Manager" unless as the ability to manually install those is dependent on the `security_levels` selected.
+"Custom nodes" should be installed using the "Manager". The ability to install those manually depends on the `security_levels` selected.
 
 # 3. Docker image
 
@@ -209,30 +208,30 @@ Available comfyui-nvidia-docker docker images to be built (make targets):
 build:          builds all
 ```
 
-It is possible to build a specifif target, for example `make ubuntu22_cuda12.3.2` or build all the available containers.
+It is possible to build a specific target, such as `make ubuntu22_cuda12.3.2`, or all the available containers.
 
 Running a given target will create a `comfyui-nvidia-docker` `docker buildx`.
-As long as none are already present, this will initiate a build with no caching.
+As long as none are present, this will initiate a build without caching.
 
-The process will create the `Dockerfile` used within the `Dockerfile` folder. For example. when using `make ubuntu22_cuda12.3.2` a `Dockerfile/Dockerfile-ubuntu22_cuda12.3.2` file is created that will contain the steps used to build the local `comfyui-nvidia-docker:ubuntu22_cuda12.3.2` Docker image.
+The process will create the `Dockerfile` used within the `Dockerfile` folder. For example, when using `make ubuntu22_cuda12.3.2` a `Dockerfile/Dockerfile-ubuntu22_cuda12.3.2` file is created that will contain the steps used to build the local `comfyui-nvidia-docker:ubuntu22_cuda12.3.2` Docker image.
 
 ### 3.1.2. Using a Dockerfile
 
 It is also possible to use one of the generated `Dockerfile` to build a specific image.
 After selecting the image to build from the `OS+CUDA` name within the `Dockerfile` folder, proceed with a `docker build` command in the directory where this `README.md` is located.
-For example to build the `ubuntu24_cuda12.5.1` container, run:
+To build the `ubuntu24_cuda12.5.1` container, run:
 
 ```bash
 docker build --tag comfyui-nvidia-docker:ubuntu24_cuda12.5.1 -f Dockerfile/Dockerfile-ubuntu24_cuda12.5.1 .
 ```
 
-Upon a succesful build completion, we will have a newly created local  `comfyui-nvidia-docker:ubuntu24_cuda12.5.1` Docker image.
+Upon completion of the build, we will have a newly created local  `comfyui-nvidia-docker:ubuntu24_cuda12.5.1` Docker image.
 
 ## 3.2. Availability on DockerHub
 
 Builds are available on DockerHub at [mmartial/comfyui-nvidia-docker](https://hub.docker.com/r/mmartial/comfyui-nvidia-docker), built from this repository's `Dockerfile`(s).
 
-The table at the top of this document shows the list of available versions on DockerHub. Make sure your NVIDIA container runtime supports the proposed CUDA version. This is particularily important if you use the `latest` tag, as it is expected to refer to the most recent OS+CUDA release.
+The table at the top of this document shows the list of available versions on DockerHub. Make sure your NVIDIA container runtime supports the proposed CUDA version. This is particularly important if you use the `latest` tag, as it is expected to refer to the most recent OS+CUDA release.
 
 ## 3.3. Unraid availability
 
@@ -276,10 +275,10 @@ From this `bash` prompt, you can now run `pip3 freeze` or other `pip3` commands 
 
 ### 5.1.1. Multiple virtualenv
 
-Because a `venv` is tied to a OS+CUDA version, the tool attempts to create some internal logic so that the `venv` folder matches the OS+CUDA of the started container.
+Because a `venv` is tied to an OS+CUDA version, the tool attempts to create some internal logic so that the `venv` folder matches the OS+CUDA of the started container.
 **Starting two `comfyui-nvidia-docker` containers with different OS+CUDA tags at the same time is likely to cause some issues**
 
-For illustration, let's say we last ran `ubuntu22_cuda12.3.1`, exited the container and now attempt to run `ubuntu24_cuda12.5.1`. The script initialization is as follows:
+For illustration, let's say we last ran `ubuntu22_cuda12.3.1`, exited the container, and now attempt to run `ubuntu24_cuda12.5.1`. The script initialization is as follows:
 - check for an existing `venv`; there is one
 - check that this `venv` is for `ubuntu24_cuda12.5.1`: it is not, it is for `ubuntu22_cuda12.3.1`
 - move `venv` to `venv-ubuntu22_cuda12.3.1`
@@ -290,20 +289,20 @@ Because of this, it is possible to have multiple `venv`-based folders in the "ru
 
 ### 5.1.2. Fixing Failed Custom Nodes
 
-A side effect of the multiple virtual environment integration is that some installed custom nodes might have an `import failed` error when switching from one OS+CUDA-version to another.
-When the container is initialized we run `cm-cli.py fix all` to attempt to fix for this.
-If this does not resolve the issue, start the `Manager -> Custom Nodes Manager`, `Filter` by `Import Failed` and use the `Try fix` button as this will download required pacakges and install those in the used `venv`. A `Restart` and UI reload will be required but this ought to fix issues with the nodes.
+A side effect of the multiple virtual environment integration is that some installed custom nodes might have an `import failed` error when switching from one OS+CUDA version to another.
+When the container is initialized ,we run `cm-cli.py fix all` to attempt to fix this.
+If this does not resolve the issue, start the `Manager -> Custom Nodes Manager`, Filter by `Import Failed`, and use the `Try fix` button. This will download the required packages and install those in the used `venv`. A `Restart` and UI reload will be required, but this ought to fix issues with the nodes.
 
 ![Import Failed: Try Fix](./assets/ImportFailed-TryFix.png)
 
 ## 5.2. user_script.bash
 
 The `run/user_script.bash` user script can perform additional operations. 
-Because this is a Docker container, updating the container will remove any additional installations that are not in the "run" directory, so it is possible to force some reinstall at runtime.
-It is also possible to bypass the ComfyUI command started (for people interested in trying the `--fast` for example).
+Because this is a Docker container, updating the container will remove any additional installations not in the "run" directory, so it is possible to force a reinstall at runtime.
+It is also possible to bypass the ComfyUI command started (for people interested in trying the `--fast`, for example).
 
 To perform those changes, be aware that:
-- The container image is Ubuntu based.
+- The container image is Ubuntu-based.
 - The `comfy` user is `sudo` capable.
 
 A simple example of one could be:
@@ -332,14 +331,14 @@ cd /comfy/mnt/ComfyUI
 python3 ./main.py --listen 0.0.0.0 --disable-auto-launch --fast
 
 echo "== To prevent the regular Comfy command from starting, we 'exit 1'"
-echo "   If we had not overrode it, we could simply end with an ok exit: 'exit 0'" 
+echo "   If we had not overridden it, we could simply end with an ok exit: 'exit 0'" 
 exit 1
 ```
 
-The script will be placed in the `run` directory, and must be named `user_script.bash` to be found.
+The script will be placed in the `run` directory and must be named `user_script.bash` to be found.
 
 If you encounter an error, it is recommended to check the container logs; this script must be executable and readable by the `comfy` user.
-If the file is not executable, the tool will attempt to make it executable, but if the file is owned by another user, the step will fail.
+If the file is not executable, the tool will attempt to make it executable, but if another user owns it, the step will fail.
 
 ## 5.3. Available environment variables
 
@@ -347,7 +346,7 @@ If the file is not executable, the tool will attempt to make it executable, but 
 
 The Linux User ID (`uid`) and Group ID (`gid`) will be used by the `comfy` user within the container.
 It is recommended that those be set to the end-user's `uid` and `gid` to allow the addition of files, models, and other content within the `run` directory.
-For content to be added within the `run` directory, it must be created with those `uid` and `gid`.
+Content to be added within the `run` directory must be created with the `uid` and `gid`.
 
 The running user's `uid` and `gid` can be obtained using `id -u` and `id -g` in a terminal.
 
@@ -385,17 +384,17 @@ Note that `pip install`ation of custom nodes is not possible in `normal` securit
 
 ### 5.3.3. SECURITY_LEVEL
 
-After initial run, it is possible to use the `SECURITY_LEVEL` environment variable to alter the default security level imposed by ComfyUI Manager.
+After the initial run, the `SECURITY_LEVEL` environment variable can be used to alter the default security level imposed by ComfyUI Manager.
 
 When following the rules defined at https://github.com/ltdrdata/ComfyUI-Manager?tab=readme-ov-file#security-policy the user should decide if `normal` will work for their use case. 
-If you manually install or alter custom nodes, you will prefer `weak`.
+You will prefer ' weak ' if you manually install or alter custom nodes.
 **WARNING: Using `normal-` will prevent access to the WebUI.**
 
 ## 5.4. ComfyUI Manager & Security levels
 
 [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager/) is installed and available in the container.
 
-The container is accessible on `0.0.0.0` internally to the container (ie all network interfaces), but is only accessible on the exposed port outside of the running container.
+The container is accessible on `0.0.0.0` internally to the container (i.e., all network interfaces), but it is only accessible on the exposed port outside of the running container.
 
 To modify the `security_level`:
 - manually: by going into your "run" folder directory and editing either `ComfyUI/user/default/ComfyUI-Manager/config.ini` if present, otherwise `custom_nodes/ComfyUI-Manager/config.ini` and alter the `security_level = ` to match your requirements (then reload ComfyUI)
@@ -408,7 +407,8 @@ For example: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py show ins
 
 ## 5.5. Shell within the Docker image
 
-Depending on your `WANTED_UID` and `WANTED_GID`, when starting a `docker exec` (or getting a ba`bash` terminal from `docker compose`) it is possible that ythe shell is stared with incorrect permissions (we will see a `bash: /comfy/.bashrc: Permission denied` error). The `comfy` user is `sudo`-able: run `sudo su comfytoo` to get the proper UID/GID.
+Depending on your `WANTED_UID` and `WANTED_GID`, when starting a `docker exec` (or getting a ba`bash` terminal from `docker compose`), it is possible that the shell is started with incorrect permissions (we will see a `bash: /comfy/.bashrc: Permission denied` error). The `comfy` user is `sudo`-able: run `sudo su comfytoo` to get the proper UID/GID.
+
 
 ## 5.6. Additional FAQ
 
@@ -419,11 +419,11 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 
 # 6. Troubleshooting
 
-The `venv` in the "run" directory contains all the required Python packages used by the tool.
+The `venv` in the "run" directory contains all the Python packages the tool requires.
 In case of an issue, it is recommended that you terminate the container, delete (or rename) the `venv` directory, and restart the container. 
 The virtual environment will be recreated; any `custom_scripts` should re-install their requirements; please see the "Fixing Failed Custom Nodes" section for additional details.
 
-It is also possible to rename the entire "run" directory for get a clean installation of ComfyUI and its virtual environment. This method is preferred --compared to deleting the "run" directory-- as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs` and other folder present within the old "run" directory.
+It is also possible to rename the entire "run" directory to get a clean installation of ComfyUI and its virtual environment. This method is preferred—compared to deleting the "run" directory—as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs`, and other folders present within the old "run" directory.
 
 # 7. Changelog
 
