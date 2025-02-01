@@ -18,6 +18,7 @@ ok_exit() {
 whoami=`whoami`
 script_dir=$(dirname $0)
 script_name=$(basename $0)
+echo ""; echo ""
 echo "======================================"
 echo "=================== Starting script (ID: $$)"
 echo "== Running ${script_name} in ${script_dir} as ${whoami}"
@@ -136,7 +137,7 @@ if [ ! -z "$WANTED_GID" -a "$WANTED_GID" != "$new_gid" ]; then echo "Wrong GID (
 if [ ! -z "$WANTED_UID" -a "$WANTED_UID" != "$new_uid" ]; then echo "Wrong UID ($new_uid), exiting"; exit 0; fi
 
 # We are now running as comfy
-echo "== Running as comfy"
+echo ""; echo "== Running as comfy"
 
 # Confirm we can write to the user directory
 echo "== Testing write access as the comfy user to the run directory"
@@ -145,7 +146,7 @@ it=${COMFYUSER_DIR}/mnt/.testfile; touch $it && rm -f $it || error_exit "Failed 
 # Obtain the latest version of ComfyUI if not already present
 cd ${COMFYUSER_DIR}/mnt
 if [ ! -d "ComfyUI" ]; then
-  echo "== Cloning ComfyUI"
+  echo ""; echo "== Cloning ComfyUI"
   git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || error_exit "ComfyUI clone failed"
 fi
 
@@ -161,7 +162,7 @@ fi
 
 # Create the HugginFace directory
 if [ ! -d HF ]; then
-  echo "== Creating HF directory"
+  echo "";echo "== Creating HF directory"
   mkdir -p HF
 fi
 export HF_HOME=${COMFYUSER_DIR}/mnt/HF
@@ -188,6 +189,7 @@ if [ -d venv ]; then
   it=venv/.build_base.txt
   venv_bb=`cat $it`
 
+  echo ""
   if cmp --silent $it $BUILD_BASE_FILE; then
     echo "== venv is for this BUILD_BASE (${BUILD_BASE})"
     SWITCHED_VENV=False
@@ -204,23 +206,23 @@ fi
 
 # virtualenv for installation
 if [ ! -d "venv" ]; then
-  echo "== Creating virtualenv"
+  echo ""; echo "== Creating virtualenv"
   python3 -m venv venv || error_exit "Virtualenv creation failed"
   echo $BUILD_BASE > venv/.build_base.txt
 fi
 
 # Activate the virtualenv and upgrade pip
 if [ ! -f ${COMFYUSER_DIR}/mnt/venv/bin/activate ]; then error_exit "virtualenv not created, please erase any venv directory"; fi
-echo "== Activating virtualenv"
+echo ""; echo "== Activating virtualenv"
 source ${COMFYUSER_DIR}/mnt/venv/bin/activate || error_exit "Virtualenv activation failed"
-echo "== Upgrading pip"
+echo ""; echo "== Upgrading pip"
 pip3 install --upgrade pip || error_exit "Pip upgrade failed"
 
 # extent the PATH to include the user local bin directory
 export PATH=${COMFYUSER_DIR}/.local/bin:${PATH}
 
 # Verify the variables
-echo "==================="
+echo ""; echo ""; echo "==================="
 echo "== Environment details:"
 echo -n "  PATH: "; echo $PATH
 echo -n "  Python version: "; python3 --version
@@ -231,24 +233,24 @@ echo -n "  git bin: "; which git
 
 # Install ComfyUI's requirements
 cd ComfyUI
-echo "== Installing/Updating from ComfyUI's requirements"
+echo ""; echo "== Installing/Updating from ComfyUI's requirements"
 pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt || error_exit "ComfyUI requirements install/upgrade failed"
-echo "== Installing Huggingface Hub"
+echo ""; echo "== Installing Huggingface Hub"
 pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -U "huggingface_hub[cli]" || error_exit "HuggingFace Hub CLI install/upgrade failed"
 
 export COMFYUI_PATH=`pwd`
-echo "-- COMFYUI_PATH: ${COMFYUI_PATH}"
+echo ""; echo "-- COMFYUI_PATH: ${COMFYUI_PATH}"
 
 # Install ComfyUI Manager if not already present
 customnodes_dir=${COMFYUI_PATH}/custom_nodes
 if [ ! -z "$BASE_DIRECTORY" ]; then it=${BASE_DIRECTORY}/custom_nodes; if [ -d $it ]; then customnodes_dir=$it; fi; fi
 cd ${customnodes_dir}
 if [ ! -d ComfyUI-Manager ]; then
-  echo "== Cloning ComfyUI-Manager"
+  echo ""; echo "== Cloning ComfyUI-Manager"
   git clone https://github.com/ltdrdata/ComfyUI-Manager.git || error_exit "ComfyUI-Manager clone failed"
 fi
 if [ ! -d ComfyUI-Manager ]; then error_exit "ComfyUI-Manager not found"; fi
-pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${customnodes_dir}/ComfyUI-Manager/requirements.txt || echo "ComfyUI-Manager CLI requirements install/upgrade failed" 
+pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${customnodes_dir}/ComfyUI-Manager/requirements.txt || echo ""; echo "ComfyUI-Manager CLI requirements install/upgrade failed" 
 
 # Lower security_level for ComfyUI-Manager to allow access from outside the container
 # This is needed to allow the WebUI to be served on 0.0.0.0 ie all interfaces and not just localhost (which would be limited to within the container)
@@ -259,6 +261,7 @@ cm_conf_user=${COMFYUI_PATH}/user/default/ComfyUI-Manager/config.ini
 cm_conf=${COMFYUI_PATH}/custom_nodes/ComfyUI-Manager/config.ini
 if [ ! -z "$BASE_DIRECTORY" ]; then it=${BASE_DIRECTORY}/user/default/ComfyUI-Manager/config.ini ; if [ -f $it ]; then cm_conf_user=$it; fi; fi
 if [ -f $cm_conf_user ]; then cm_conf=$cm_conf_user; fi
+echo ""
 if [ ! -f $cm_conf ]; then
   echo "== ComfyUI-Manager $cm_conf file missing, script potentially never run before. You will need to run ComfyUI-Manager a first time for the configuration file to be generated, we can not attempt to update its security level yet -- if this keeps occurring, please let the developer know so he can investigate. Thank you"
 else
@@ -269,6 +272,7 @@ else
 fi
 
 # Attempt to use ComfyUI Manager CLI to fix all installed nodes -- This must be done within the activated virtualenv
+echo ""
 if [ "A${SWITCHED_VENV}" == "AFalse" ]; then
   echo "== Skipping ComfyUI-Manager CLI fix as we are re-using the same venv as the last execution"
   echo "  -- If you are experiencing issues with custom nodes, use 'Manager -> Custom Nodes Manager -> Filter: Import Failed -> Try Fix' from the WebUI"
@@ -284,12 +288,18 @@ else
 fi
 
 # If we are using a base directory... 
-if [ ! -z "$BASE_DIRECTORY" ]; then 
-  echo "== Setting base_directory: $BASE_DIRECTORY"
+if [ ! -z "$BASE_DIRECTORY" ]; then
+  if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY ($BASE_DIRECTORY) not found or not a directory"; fi
+  it=${BASE_DIRECTORY}/.testfile && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
+
+  echo ""; echo "== Setting base_directory: $BASE_DIRECTORY"
 
   # List of content to process obtained from https://github.com/comfyanonymous/ComfyUI/pull/6600/files
 
   # we want to MOVE content from the expected directories into the new base_directory (if those directories do not exist yet)
+  # any git pull on the ComfyUI directory will create new folder structure under the source directories but since we have moved existing
+  # ones to the new base_directory, the new structure will be ignored
+  echo "++ Logic to move content from ComfyUI directories to the new base_directory"
   for i in models input output temp user custom_nodes; do
     in=${COMFYUI_PATH}/$i
     out=${BASE_DIRECTORY}/$i
@@ -298,14 +308,16 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
         echo "  ++ Moving $in to $out"
         mv $in $out || error_exit "Failed to move $in to $out"
       else
-        echo "  -- $out already exists, skipping"
+        echo "  -- Both $in (in) and $out (out) exist, skipping move."
+        echo "FYI attempting to list files in 'in' that are not in 'out' (empty means no differences):"
+        comm -23 <(find $in -type f -printf "%P\n" | sort) <(find $out -type f -printf "%P\n" | sort)
       fi
     else
         if [ ! -d $out ]; then
-          echo "  ++ $in not found, creating destination directory $out"
+          echo "  ++ $in not found, $out does not exist: creating destination directory"
           mkdir -p $out || error_exit "Failed to create $out"
         else
-          echo "  -- $out already exists, skipping"
+          echo "  -- $in not found, $out exists, skipping"
         fi
     fi
   done
@@ -322,17 +334,18 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     fi
   done
 
-  # and extend the command line using COMFY_CMDLINE_XTRA
-  COMFY_CMDLINE_XTRA="${COMFY_CMDLINE_XTRA} --base-directory $BASE_DIRECTORY" 
+  # and extend the command line using COMFY_CMDLINE_XTRA (export to be accessible to child processes such as the user script)
+  export COMFY_CMDLINE_XTRA="${COMFY_CMDLINE_XTRA} --base-directory $BASE_DIRECTORY"
+  echo "!! COMFY_CMDLINE_XTRA extended, make sure to use it in user script"
 fi
 
 # Final steps before running ComfyUI
 cd ${COMFYUI_PATH}
-echo -n "== Container directory: "; pwd
+echo "";echo -n "== Container directory: "; pwd
 
 # Check for a user custom script
 it=${COMFYUSER_DIR}/mnt/user_script.bash
-echo "== Checking for user script: ${it}"
+echo ""; echo "== Checking for user script: ${it}"
 if [ -f $it ]; then
   if [ ! -x $it ]; then
     echo "== Attempting to make user script executable"
@@ -342,10 +355,10 @@ if [ -f $it ]; then
   $it || error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
 fi
 
-echo "==================="
+echo ""; echo "==================="
 echo "== Running ComfyUI"
 # Full list of CLI options at https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/cli_args.py
-echo "-- Running: ${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_XTRA}"
+echo "-- Command line run: ${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_XTRA}"
 ${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_XTRA} || error_exit "ComfyUI failed or exited with an error"
 
 ok_exit "Clean exit"
