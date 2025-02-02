@@ -101,6 +101,7 @@ if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 BUILD_BASE=`cat $it`
 BUILD_BASE_FILE=$it
 BUILD_BASE_SPECIAL="ubuntu22_cuda12.3.2" # this is a special value: when this feature was introduced, will be used to mark exisitng venv if the marker is not present
+BUILD_BASE_RTX50xx="ubuntu24_cuda12.8"
 echo "-- BUILD_BASE: \"${BUILD_BASE}\""
 if test -z ${BUILD_BASE}; then error_exit "Empty BUILD_BASE variable"; fi
 
@@ -230,6 +231,15 @@ echo -n "  Pip version: "; pip3 --version
 echo -n "  python bin: "; which python3
 echo -n "  pip bin: "; which pip3
 echo -n "  git bin: "; which git
+
+# CUDA 12.8 special case
+# https://github.com/comfyanonymous/ComfyUI/discussions/6643
+if [[ "${BUILD_BASE}" == "${BUILD_BASE_RTX50xx}"* ]]; then
+  echo ""; echo "!! BUILD_BASE (${BUILD_BASE}) starts with ${BUILD_BASE_RTX50xx} - this is for RTX 50xx series GPUs"
+  echo ""; echo "!! This is a special case, we are going to install the requirements for RTX 50xx series GPUs"
+  echo ""
+  pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+fi
 
 # Install ComfyUI's requirements
 cd ComfyUI
