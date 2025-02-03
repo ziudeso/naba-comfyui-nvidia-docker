@@ -7,24 +7,27 @@ Make sure you have the NVIDIA Container Toolkit installed. More details: https:/
 To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, and select the `SECURITY_LEVEL`:
 
 ```bash
-mkdir run
+# 'run' will contain your virtual environment(s), ComfyUI source code, and Hugging Face Hub data
+# 'basedir' will contain your custom nodes, input, output, user and models directories
+mkdir run basedir
+
 
 # Using docker
-docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
 
 # Using podman
-podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
 ```
 
 <hr>
 
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI/tree/master) is a Stable Diffusion WebUI. 
-With the recent addition of a [Flux example](https://comfyanonymous.github.io/ComfyUI_examples/flux/), I created this container builder to test it.
+With the addition in August 2024 of a [Flux example](https://comfyanonymous.github.io/ComfyUI_examples/flux/), I created this container builder to test it. 
 This container was built to benefit from the process isolation that containers bring and to drop the container's main process privileges to that of a regular user (the container's `comfy` user, which is `sudo` capable).
 
 The container size (usually over 4GB) contains the required components on an Ubuntu image with Nvidia CUDA and CuDNN (the base container is available from Nvidia's DockerHub); we add the requirements components to support an installation of ComfyUI.
 
-Multiple images are available. Each image's name contains a tag reflecting its core components. For example, `ubuntu24_cuda12.5.1` is based on Ubuntu 24.04 with CUDA 12.5.1. Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and will not be able to run the CUDA 12.4.1 or 12.5.1 versions. 
+Multiple images are available. Each image's name contains a tag reflecting its core components. For example, `ubuntu24_cuda12.5.1` is based on Ubuntu 24.04 with CUDA 12.5.1. Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and will not be able to run the CUDA 12.4.1 or 12.5.1 versions. The recently released 570 driver supports up to CUDA 12.8 and RTX 50xx GPUs.
 Use the `nvidia-smi` command on your system to obtain the `CUDA Version:` entry in the produced table's header.
 For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
 
@@ -78,8 +81,9 @@ It is recommended that a container monitoring tool be available to watch the log
   - [5.2. user\_script.bash](#52-user_scriptbash)
   - [5.3. Available environment variables](#53-available-environment-variables)
     - [5.3.1. WANTED\_UID and WANTED\_GID](#531-wanted_uid-and-wanted_gid)
-    - [5.3.2. COMFY\_CMDLINE\_BASE and COMFY\_CMDLINE\_XTRA](#532-comfy_cmdline_base-and-comfy_cmdline_xtra)
-    - [5.3.3. SECURITY\_LEVEL](#533-security_level)
+    - [5.3.2. COMFY\_CMDLINE\_BASE and COMFY\_CMDLINE\_EXTRA](#532-comfy_cmdline_base-and-comfy_cmdline_extra)
+    - [5.3.3. BASE\_DIRECTORY](#533-base_directory)
+    - [5.3.4. SECURITY\_LEVEL](#534-security_level)
   - [5.4. ComfyUI Manager \& Security levels](#54-comfyui-manager--security-levels)
   - [5.5. Shell within the Docker image](#55-shell-within-the-docker-image)
   - [5.6. Additional FAQ](#56-additional-faq)
@@ -104,7 +108,7 @@ Note:
 
 # 2. Running the container
 
-In the directory where we intend to run the container, create the `run` folder as the user with whom we want to share the UID/GID. **This needs to be done before the container is run (it is started as root, so the folder, if it does not exist, will be created as root)** (or give it another name; adapt the `-v` mapping in the `docker run` below). 
+In the directory where we intend to run the container, create the `run` and `basedir` folders as the user with whom we want to share the UID/GID. **This needs to be done before the container is run (it is started as root, so the folders, if they do not exist, will be created as root)** (or give it another name; adapt the `-v` mapping in the `docker run` below). 
 
 That `run` folder will be populated with a few sub-directories created with the UID/GID passed on the command line (see the command line below). 
 Among the folders that will be created within `run` are `HF, ComfyUI, venv`
@@ -118,6 +122,9 @@ Among the folders that will be created within `run` are `HF, ComfyUI, venv`
 
 **Currently, it is not recommended to volume map folders within the `ComfyUI` folder**. Doing so is likely to prevent proper installation (during the first run) or update, as any volume mapping (`docker ... -v` or `- local_path:container_path` for compose) creates those directories within a directory structure that is not supposed to exist during the initial execution.
 
+The use of the `basedir` is recommended. This folder will be populated at run time with the content from ComfyUI's `input`, `output`, `user` and `models` folders. This allow for the separation of the run time components (within the `run` folder) from the user files. In particular, if you were to delete the `run` folder, you would still have model files in the `basedir` folder.
+This is possible because of a new CLI option `--basedir` that was added to the code at the end of January 2025. This option will not be available unless ComfyUI is updated for existing installations.
+
 When starting, the container image executes the `init.bash` script that performs a few operations:
 - Ensure we can use the `WANTED_UID` and `WANTED_GID` as the `comfy` user (the user set to run the container),
 - Obtain the latest version of ComfyUI from GitHub if not already present in the mounted `run` folder.
@@ -129,27 +136,30 @@ When starting, the container image executes the `init.bash` script that performs
 - Install all the ComfyUI-required Python packages. If those are already present, additional content should not need to be downloaded.
 - Installing ComfyUI-Manager if it is not present.
   - During additional runs, we will allow the user to change the `security_level` from `normal` to another value set using the `SECURITY_LEVEL` environment passed to the container (see the "Security Levels" section of this document for details) to allow for the tool grant more of less functionalities
+- Populate the `BASE_DIRECTORY` with the `input`, `output`, `user` and `models` directories from ComfyUI's `run` folder if none are present in the `basedir` folder
+  - extend the `COMFY_CMDLINE_EXTRA` environment variable with the `--basedir` option. This variable is `export`ed so that it should be used with any `user_script.bash` if the `BASE_DIRECTORY` is used.
 - Check for a user custom script in the "run" directory. It must be named `user_script.bash`. If one exists, run it.
+  - **Make sure to use the `COMFY_CMDLINE_EXTRA` environment variable to pass the `--basedir` option to the tool if running the tool from within this script**
 - Run the ComfyUI WebUI. For the exact command run, please see the last line of `init.bash`
 
 
 ## 2.1. docker run
 
-To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, and select the `SECURITY_LEVEL`:
+To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, provide a `BASE_DIRECTORY` and select the `SECURITY_LEVEL`:
 
 ```bash
-mkdir run
-docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+mkdir run basedir
+docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
 ```
 
 ## 2.2. podman
 
 It is also possible to run the tool using `podman`. Before doing so, ensure the Container Device Interface (CDI) is properly set for your driver. Please see https://blg.gkr.one/20240404-u24_nvidia_docker_podman/ for instructions.
-To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, and select the `SECURITY_LEVEL`:
+To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, provide a `BASE_DIRECTORY` and select the `SECURITY_LEVEL`:
 
 ```bash
-mkdir run
-podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+mkdir run basedir
+podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
 ```
 
 ## 2.3. Docker compose
@@ -165,10 +175,12 @@ services:
       - 8188:8188
     volumes:
       - ./run:/comfy/mnt
+      - ./basedir:/basedir
     restart: unless-stopped
     environment:
       - WANTED_UID=1000
       - WANTED_GID=1000
+      - BASE_DIRECTORY=/basedir
       - SECURITY_LEVEL=normal
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
@@ -184,7 +196,7 @@ services:
                 - utility
 ```
 
-This will use port 8188 (`host:container`). Use a `run` directory local to the directory where this `compose.yml` is, and specify the `WANTED_UID` and `WANTED_GID` to 1000 (adapt as needed). Make sure to create the `run` directory as the user with the desired uid and gid before running the docker-compose for the first time.
+This will use port 8188 (`host:container`). Use a `run` directory local to the directory where this `compose.yml` is, and specify the `WANTED_UID` and `WANTED_GID` to 1000 (adapt as needed). Make sure to create the `run` and `basedir` directories as the user with the desired uid and gid before running the docker-compose for the first time.
 
 Start it with `docker compose up` (with `-detached` to run the container in the background)
 
@@ -196,7 +208,6 @@ For users interested in adding it to a [Dockge](https://dockge.kuma.pet/) (a sel
 
 The first time we run the container, we will go to our host's IP on port 8188 (likely `http://127.0.0.1:8188`) and see the latest run or the bottle-generating example.
 
-
 Before attempting to run this example, restarting the container is recommended.
 The default security model of `normal` is used unless specified, but the needed configuration file is created at the first run of the container. As such, the ComfyUI Manager's default `security_level` can not be modified until the first container restart (after the WebUI ran the first time).
 
@@ -205,7 +216,7 @@ This example requires the [`v1-5-pruned-emaonly.ckpt`](https://huggingface.co/ru
 It is also possible to manually install Stable Diffusion checkpoints, upscale, or Loras (and more) by placing them directly in their respective directories under the `models` folder. For example, to manually install the required "bottle example" checkpoint, as the user with the wanted uid/gid:
 
 ```bash
-cd <YOUR_RUN_DIRECTORY>/ComfyUI/models/checkpoints
+cd <YOUR_BASE_DIRECTORY>/models/checkpoints
 wget https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.ckpt
 ```
 
@@ -335,7 +346,7 @@ To perform those changes, be aware that:
 - The container image is Ubuntu-based.
 - The `comfy` user is `sudo` capable.
 
-A simple example of one could be:
+An example of one could be:
 
 ```bash
 #!/bin/bash
@@ -356,9 +367,10 @@ export PATH=/comfy/.local/bin:${PATH}
 # but will be in the PATH for commands run from within this script
 
 echo "== Override ComfyUI launch command"
-# Make sure to have activated the venv before running this command 
+# Make sure to have 1) activated the venv before running this command 
+# 2) use the COMFY_CMDLINE_EXTRA environment variable to pass additional command-line arguments set during the init script
 cd /comfy/mnt/ComfyUI
-python3 ./main.py --listen 0.0.0.0 --disable-auto-launch --fast
+python3 ./main.py --listen 0.0.0.0 --disable-auto-launch --fast ${COMFY_CMDLINE_EXTRA}
 
 echo "== To prevent the regular Comfy command from starting, we 'exit 1'"
 echo "   If we had not overridden it, we could simply end with an ok exit: 'exit 0'" 
@@ -380,15 +392,17 @@ Content to be added within the `run` directory must be created with the `uid` an
 
 The running user's `uid` and `gid` can be obtained using `id -u` and `id -g` in a terminal.
 
-### 5.3.2. COMFY_CMDLINE_BASE and COMFY_CMDLINE_XTRA
+### 5.3.2. COMFY_CMDLINE_BASE and COMFY_CMDLINE_EXTRA
 
-You can add extra parameters by adding ComfyUI-compatible command-line arguments to the `COMFY_CMDLINE_XTRA` environment variable.
-For example: `docker run [...] -e COMFY_CMDLINE_XTRA="--fast --reserve-vram 2.0 --lowvram"`
+You can add extra parameters by adding ComfyUI-compatible command-line arguments to the `COMFY_CMDLINE_EXTRA` environment variable.
+For example: `docker run [...] -e COMFY_CMDLINE_EXTRA="--fast --reserve-vram 2.0 --lowvram"`
+
+Note that the `COMFY_CMDLINE_EXTRA` variable might be extended by the init script to match additional parameters such as the `BASE_DIRECTORY` variable.
 
 The default command line used by the script to start ComfyUI is `python3 ./main.py --listen 0.0.0.0 --disable-auto-launch`
 This is also the default value set to the `COMFY_CMDLINE_BASE` variable during the initialization script. **It is recommended not to alter the value of this variable, as this might prevent the tool from starting successfully**.
 
-The tool will run the combination of COMFY_CMDLINE_BASE followed by COMFY_CMDLINE_XTRA. In the above example:
+The tool will run the combination of COMFY_CMDLINE_BASE followed by COMFY_CMDLINE_EXTRA. In the above example:
 ```bash
 python3 ./main.py --listen 0.0.0.0 --disable-auto-launch --fast --reserve-vram 2.0 --lowvram
 ```
@@ -412,7 +426,17 @@ exit 0
 
 Note that `pip install`ation of custom nodes is not possible in `normal` security level, and `weak` should be used instead (see the "Security levels" section for details)
 
-### 5.3.3. SECURITY_LEVEL
+### 5.3.3. BASE_DIRECTORY
+
+This option was added to ComfyUI at the end of January 2025. If you are using an already existing installation, update ComfyUI using the manager before enabling this option.
+
+Once enabled, this option should not be disabled in future run.
+During the initial run, the tool will **move** exisiting content from the `run` directory to the `BASE_DIRECTORY` specified.
+This is to avoid having multiple copies of downloaded models (taking multiple GB of storage) in both locations.
+
+The `BASE_DIRECTORY` environment variable is used to specify the directory where ComfyUI will look for the `models`, `input`, `output`, `user` and `custom_nodes` folders.
+
+### 5.3.4. SECURITY_LEVEL
 
 After the initial run, the `SECURITY_LEVEL` environment variable can be used to alter the default security level imposed by ComfyUI Manager.
 
@@ -437,7 +461,7 @@ For example: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py show ins
 
 ## 5.5. Shell within the Docker image
 
-Depending on your `WANTED_UID` and `WANTED_GID`, when starting a `docker exec` (or getting a ba`bash` terminal from `docker compose`), it is possible that the shell is started with incorrect permissions (we will see a `bash: /comfy/.bashrc: Permission denied` error). The `comfy` user is `sudo`-able: run `sudo su comfytoo` to get the proper UID/GID.
+Depending on your `WANTED_UID` and `WANTED_GID`, when starting a `docker exec` (or getting a `bash` terminal from `docker compose`), it is possible that the shell is started with incorrect permissions (we will see a `bash: /comfy/.bashrc: Permission denied` error). The `comfy` user is `sudo`-able: run `sudo su comfytoo` to get the proper UID/GID.
 
 
 ## 5.6. Additional FAQ
@@ -453,13 +477,15 @@ The `venv` in the "run" directory contains all the Python packages the tool requ
 In case of an issue, it is recommended that you terminate the container, delete (or rename) the `venv` directory, and restart the container. 
 The virtual environment will be recreated; any `custom_scripts` should re-install their requirements; please see the "Fixing Failed Custom Nodes" section for additional details.
 
-It is also possible to rename the entire "run" directory to get a clean installation of ComfyUI and its virtual environment. This method is preferred—compared to deleting the "run" directory—as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs`, and other folders present within the old "run" directory.
+It is also possible to rename the entire "run" directory to get a clean installation of ComfyUI and its virtual environment. This method is preferred, compared to deleting the "run" directory—as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs`, and other folders present within the old "run" directory.
+If using the `BASE_DIRECTORY` environment variable, please note that some of that `run` directory content will be moved to the `BASE_DIRECTORY` specified.
 
 # 7. Changelog
 
+- 20250202: Added `BASE_DIRECTORY` variable
 - 20250116: Happy 2nd Birthday ComfyUI -- added multiple builds for different base Ubuntu OS and CUDA combinations + added `ffmpeg`  into the base container.
 - 20250109: Integrated `SECURITY_LEVELS` within the docker arguments + added `libGL` into the base container.
-- 20240915: Added `COMFY_CMDLINE_BASE` and `COMFY_CMDLINE_XTRA` variable
+- 20240915: Added `COMFY_CMDLINE_BASE` and `COMFY_CMDLINE_EXTRA` variable
 - 20240824: Tag 0.2: shift to pull at first run-time, user upgradable with lighter base container
 - 20240824: Tag 0.1: builds were based on ComfyUI release, not user upgradable
 - 20240810: Initial Release
