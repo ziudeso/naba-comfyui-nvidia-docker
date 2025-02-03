@@ -28,7 +28,7 @@ cmd_wgid=$2
 cmd_seclvl=$3
 cmd_basedir=$4
 cmd_cmdline_base=$5
-cmd_cmdline_xtra=$6
+cmd_cmdline_extra=$6
 
 # everyone can read our files by default
 umask 0022
@@ -54,13 +54,15 @@ if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 COMFY_CMDLINE_BASE=`cat $it`
 echo "-- COMFY_CMDLINE_BASE: \"${COMFY_CMDLINE_BASE}\""
 
-it=$itdir/comfy_cmdline_xtra
-if [ ! -z "$cmd_cmdline_xtra" ]; then COMFY_CMDLINE_XTRA=`cat $cmd_cmdline_xtra`; else cmd_cmdline_xtra=$it; fi
-if [ -z ${COMFY_CMDLINE_XTRA+x} ]; then COMFY_CMDLINE_XTRA=""; fi
-if [ ! -z ${COMFY_CMDLINE_XTRA+x} ]; then write_worldtmpfile $it "$COMFY_CMDLINE_XTRA"; fi
+# support previous variable
+if [ ! -z ${COMFY_CMDLINE_XTRA+x} ]; then COMFY_CMDLINE_EXTRA="${COMFY_CMDLINE_XTRA}"; fi
+it=$itdir/comfy_cmdline_extra
+if [ ! -z "$cmd_cmdline_extra" ]; then COMFY_CMDLINE_EXTRA=`cat $cmd_cmdline_extra`; else cmd_cmdline_extra=$it; fi
+if [ -z ${COMFY_CMDLINE_EXTRA+x} ]; then COMFY_CMDLINE_EXTRA=""; fi
+if [ ! -z ${COMFY_CMDLINE_EXTRA+x} ]; then write_worldtmpfile $it "$COMFY_CMDLINE_EXTRA"; fi
 if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
-COMFY_CMDLINE_XTRA=`cat $it`
-echo "-- COMFY_CMDLINE_XTRA: \"${COMFY_CMDLINE_XTRA}\""
+COMFY_CMDLINE_EXTRA=`cat $it`
+echo "-- COMFY_CMDLINE_EXTRA: \"${COMFY_CMDLINE_EXTRA}\""
 
 
 if [ -z "$WANTED_UID" ]; then WANTED_UID=$cmd_wuid; fi
@@ -71,7 +73,7 @@ if [ -z "$WANTED_GID" ]; then echo "-- No WANTED_GID provided, using comfy user 
 if [ -z "$SECURITY_LEVEL" ]; then SECURITY_LEVEL=$cmd_seclvl; fi
 if [ -z "$SECURITY_LEVEL" ]; then echo "-- No SECURITY_LEVEL provided, using comfy default of normal"; SECURITY_LEVEL="normal"; fi
 
-if [ -z "$BASE_DIRECTORY"]; then BASE_DIRECTORY=$cmd_basedir; fi
+if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$cmd_basedir; fi
 if [ ! -z "$BASE_DIRECTORY" ]; then if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY requested but not found or not a directory ($BASE_DIRECTORY)"; fi; fi
 
 # The script is started as comfy
@@ -82,7 +84,7 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   # Make the comfy user (the Docker USER) have the proper UID/GID as well
   sudo usermod -u ${WANTED_UID} -o -g ${WANTED_GID} comfy
   # restart the script as comfy (Docker USER) with the correct UID/GID this time
-  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_xtra} || error_exit "subscript failed"
+  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
   ok_exit "Clean exit"
 fi
 
@@ -127,7 +129,7 @@ if [ $do_change == "True" ]; then
   sudo useradd -u ${WANTED_UID} -o -g ${WANTED_GID} -s /bin/bash -d ${COMFYUSER_DIR} -M comfytoo
   sudo adduser comfytoo sudo
   # Reload the script to bypass limitation (and exit)
-  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_xtra} || error_exit "subscript failed"
+  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
   ok_exit "Clean exit"
 fi
 
@@ -233,18 +235,25 @@ echo -n "  pip bin: "; which pip3
 echo -n "  git bin: "; which git
 
 # CUDA 12.8 special case
-# https://github.com/comfyanonymous/ComfyUI/discussions/6643
 if [[ "${BUILD_BASE}" == "${BUILD_BASE_RTX50xx}"* ]]; then
-  echo ""; echo "!! BUILD_BASE (${BUILD_BASE}) starts with ${BUILD_BASE_RTX50xx} - this is for RTX 50xx series GPUs"
-  echo ""; echo "!! This is a special case, we are going to install the requirements for RTX 50xx series GPUs"
-  echo ""
-  pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+  error_exit "STOPPING here: until torchaudio and torchvision are available for CUDA 12.8, we can not go further"
+  
+#  echo ""; echo "!! This is a special case, we are going to install the requirements for RTX 50xx series GPUs"
+#  echo "  -- Installation CUDA 12.8 Torch from nightly"
+#  pip3 install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
+#
+#  # https://github.com/comfyanonymous/ComfyUI/discussions/6643
+#  toremove='torchvision\|torchaudio\|spandrel'
+#  echo "  -- Creating an modified ComfyUI/requirements.txt to remove: $toremove"
+#  grep -v "$toremove" ComfyUI/requirements.txt > ${COMFYUSER_DIR}/mnt/comfyui-${BUILD_BASE}-requirements.txt
+#  grep "$toremove" ${COMFYUSER_DIR}/mnt/comfyui-${BUILD_BASE}-requirements.txt || echo "  ($toremove not found in modified requirements.txt)"
 fi
 
 # Install ComfyUI's requirements
 cd ComfyUI
-echo ""; echo "== Installing/Updating from ComfyUI's requirements"
-pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt || error_exit "ComfyUI requirements install/upgrade failed"
+it=${COMFYUSER_DIR}/mnt/comfyui-${BUILD_BASE}-requirements.txt; if [ ! -f $it ]; then it=requirements.txt; fi
+echo ""; echo "== Installing/Updating from ComfyUI's requirements (using: $it)"
+pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r $it || error_exit "ComfyUI requirements install/upgrade failed"
 echo ""; echo "== Installing Huggingface Hub"
 pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -U "huggingface_hub[cli]" || error_exit "HuggingFace Hub CLI install/upgrade failed"
 
@@ -252,15 +261,17 @@ export COMFYUI_PATH=`pwd`
 echo ""; echo "-- COMFYUI_PATH: ${COMFYUI_PATH}"
 
 # Install ComfyUI Manager if not already present
+echo ""
 customnodes_dir=${COMFYUI_PATH}/custom_nodes
 if [ ! -z "$BASE_DIRECTORY" ]; then it=${BASE_DIRECTORY}/custom_nodes; if [ -d $it ]; then customnodes_dir=$it; fi; fi
 cd ${customnodes_dir}
 if [ ! -d ComfyUI-Manager ]; then
-  echo ""; echo "== Cloning ComfyUI-Manager"
+  echo "== Cloning ComfyUI-Manager (within ${customnodes_dir})"
   git clone https://github.com/ltdrdata/ComfyUI-Manager.git || error_exit "ComfyUI-Manager clone failed"
 fi
 if [ ! -d ComfyUI-Manager ]; then error_exit "ComfyUI-Manager not found"; fi
-pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${customnodes_dir}/ComfyUI-Manager/requirements.txt || echo ""; echo "ComfyUI-Manager CLI requirements install/upgrade failed" 
+echo "== Installing/Updating ComfyUI-Manager's requirements (from ${customnodes_dir}/ComfyUI-Manager/requirements.txt)"
+pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r ${customnodes_dir}/ComfyUI-Manager/requirements.txt || error_exit "ComfyUI-Manager CLI requirements install/upgrade failed" 
 
 # Lower security_level for ComfyUI-Manager to allow access from outside the container
 # This is needed to allow the WebUI to be served on 0.0.0.0 ie all interfaces and not just localhost (which would be limited to within the container)
@@ -344,9 +355,9 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     fi
   done
 
-  # and extend the command line using COMFY_CMDLINE_XTRA (export to be accessible to child processes such as the user script)
-  export COMFY_CMDLINE_XTRA="${COMFY_CMDLINE_XTRA} --base-directory $BASE_DIRECTORY"
-  echo "!! COMFY_CMDLINE_XTRA extended, make sure to use it in user script"
+  # and extend the command line using COMFY_CMDLINE_EXTRA (export to be accessible to child processes such as the user script)
+  export COMFY_CMDLINE_EXTRA="${COMFY_CMDLINE_EXTRA} --base-directory $BASE_DIRECTORY"
+  echo "!! COMFY_CMDLINE_EXTRA extended, make sure to use it in user script (if any): ${COMFY_CMDLINE_EXTRA}"
 fi
 
 # Final steps before running ComfyUI
@@ -362,13 +373,16 @@ if [ -f $it ]; then
     chmod +x $it || error_exit "Failed to make user script executable"
   fi
   echo "  Running user script: ${it}"
-  $it || error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
+  $it
+  if [ $? -ne 0 ]; then 
+    error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
+  fi
 fi
 
 echo ""; echo "==================="
 echo "== Running ComfyUI"
 # Full list of CLI options at https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/cli_args.py
-echo "-- Command line run: ${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_XTRA}"
-${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_XTRA} || error_exit "ComfyUI failed or exited with an error"
+echo "-- Command line run: ${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_EXTRA}"
+${COMFY_CMDLINE_BASE} ${COMFY_CMDLINE_EXTRA} || error_exit "ComfyUI failed or exited with an error"
 
 ok_exit "Clean exit"
