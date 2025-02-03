@@ -7,7 +7,7 @@ DOCKER_BUILD_ARGS=
 ##DOCKER_BUILD_ARGS="--no-cache"
 
 #BUILD_DATE=$(shell printf '%(%Y%m%d)T' -1)
-BUILD_DATE=20250116
+BUILD_DATE=20250202
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
 
@@ -15,7 +15,9 @@ COMPONENTS_DIR=components
 DOCKERFILE_DIR=Dockerfile
 
 # Get the list of all the base- files in COMPONENTS_DIR
-DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | sort)
+#DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | perl -pe 's%\.Dockerfile%%' | sort)
+# Remove CUDA 12.8 entries for the time being
+DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | perl -pe 's%\.Dockerfile%%' | sort | grep -v 12.8)
 
 all:
 	@if [ `echo ${DOCKER_ALL} | wc -w` -eq 0 ]; then echo "No images candidates to build"; exit 1; fi
@@ -31,8 +33,8 @@ ${DOCKERFILE_DIR}:
 
 ${DOCKER_ALL}: ${DOCKERFILE_DIR}
 	@echo ""; echo ""; echo "===== Building ${COMFYUI_CONTAINER_NAME}:$@"
-	@cat ${COMPONENTS_DIR}/base-$@ > ${DOCKERFILE_DIR}/Dockerfile-$@
-	@cat ${COMPONENTS_DIR}/part1-common >> ${DOCKERFILE_DIR}/Dockerfile-$@
+	@cat ${COMPONENTS_DIR}/base-$@.Dockerfile > ${DOCKERFILE_DIR}/Dockerfile-$@
+	@cat ${COMPONENTS_DIR}/part1-common.Dockerfile >> ${DOCKERFILE_DIR}/Dockerfile-$@
 	@$(eval VAR_NT="${COMFYUI_CONTAINER_NAME}-$@")
 	@echo "-- Docker command to be run:"
 	@echo "docker buildx ls | grep -q ${COMFYUI_CONTAINER_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${COMFYUI_CONTAINER_NAME}\" || docker buildx create --name ${COMFYUI_CONTAINER_NAME}"  > ${VAR_NT}.cmd
@@ -82,7 +84,11 @@ docker_rmi:
 ############################################### For maintainer only
 ###### push -- will only proceed with existing ("present") images
 
+# user the highest numbered entry
 LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -1)
+# use the previous to last entry as the candidate (12.8 is for 50xx series GPUs, the driver is still beta)
+#LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -2 | head -1)
+
 LATEST_CANDIDATE=$(shell echo ${COMFYUI_CONTAINER_NAME}:${LATEST_ENTRY})
 
 docker_tag:
