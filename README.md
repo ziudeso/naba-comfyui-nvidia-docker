@@ -428,13 +428,15 @@ Note that `pip install`ation of custom nodes is not possible in `normal` securit
 
 ### 5.3.3. BASE_DIRECTORY
 
-This option was added to ComfyUI at the end of January 2025. If you are using an already existing installation, update ComfyUI using the manager before enabling this option.
+The `BASE_DIRECTORY` environment variable is used to specify the directory where ComfyUI will look for the `models`, `input`, `output`, `user` and `custom_nodes` folders.
+
+**This option was added to ComfyUI at the end of January 2025. If you are using an already existing installation, update ComfyUI using the manager before enabling this option.** 
 
 Once enabled, this option should not be disabled in future run.
-During the initial run, the tool will **move** exisiting content from the `run` directory to the `BASE_DIRECTORY` specified.
+During the first run with this option, the tool will **move** exisiting content from the `run` directory to the `BASE_DIRECTORY` specified.
 This is to avoid having multiple copies of downloaded models (taking multiple GB of storage) in both locations.
-
-The `BASE_DIRECTORY` environment variable is used to specify the directory where ComfyUI will look for the `models`, `input`, `output`, `user` and `custom_nodes` folders.
+**If your `models` directory is large, I recommend doing a manual `mv run/ComfyUI/models basedir/.` before running the container. The volumes are considered separate within the container, so the move operation within the container will 1) perform a file copy for each file within the folder (which will take a while) 2) double the model directory size before it is finished copying before it can delete the previous folder.**
+The same logic can be applied to the `input`, `output`, `user`, and `custom_nodes` folders.
 
 ### 5.3.4. SECURITY_LEVEL
 
@@ -479,6 +481,8 @@ The virtual environment will be recreated; any `custom_scripts` should re-instal
 
 It is also possible to rename the entire "run" directory to get a clean installation of ComfyUI and its virtual environment. This method is preferred, compared to deleting the "run" directory—as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs`, and other folders present within the old "run" directory.
 If using the `BASE_DIRECTORY` environment variable, please note that some of that `run` directory content will be moved to the `BASE_DIRECTORY` specified.
+
+If using the `BASE_DIRECTORY` option and the program exit saying the `--base-directory` option does not exist, this is due to an outdated ComfyUI installation. A possible solution is to disable the opton, restart the container and use the ComfyUI-Manager to update ComfyUI. Another option is manually update the code: `cd run/ComfyUI; git pull`
 
 # 7. Changelog
 
