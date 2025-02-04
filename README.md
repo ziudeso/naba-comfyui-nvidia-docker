@@ -88,6 +88,9 @@ It is recommended that a container monitoring tool be available to watch the log
   - [5.5. Shell within the Docker image](#55-shell-within-the-docker-image)
   - [5.6. Additional FAQ](#56-additional-faq)
 - [6. Troubleshooting](#6-troubleshooting)
+  - [6.1. Virtual environment](#61-virtual-environment)
+  - [6.2. run directory](#62-run-directory)
+  - [6.3. using BASE\_DIRECTORY with an outdated ComfyUI](#63-using-base_directory-with-an-outdated-comfyui)
 - [7. Changelog](#7-changelog)
 
 # 1. Preamble
@@ -428,7 +431,7 @@ Note that `pip install`ation of custom nodes is not possible in `normal` securit
 
 ### 5.3.3. BASE_DIRECTORY
 
-The `BASE_DIRECTORY` environment variable is used to specify the directory where ComfyUI will look for the `models`, `input`, `output`, `user` and `custom_nodes` folders.
+The `BASE_DIRECTORY` environment variable is used to specify the directory where ComfyUI will look for the `models`, `input`, `output`, `user` and `custom_nodes` folders. This is a good option to seprate the virtual environment and ComfyUI's code (in the `run` folder) from the end user's files (in the `basedir` folder). For Unraid in particular, you can use this to place the `basedir` on a separate volume, outside of the `appdata` folder.
 
 **This option was added to ComfyUI at the end of January 2025. If you are using an already existing installation, update ComfyUI using the manager before enabling this option.** 
 
@@ -475,14 +478,35 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 
 # 6. Troubleshooting
 
+## 6.1. Virtual environment
+
 The `venv` in the "run" directory contains all the Python packages the tool requires.
 In case of an issue, it is recommended that you terminate the container, delete (or rename) the `venv` directory, and restart the container. 
 The virtual environment will be recreated; any `custom_scripts` should re-install their requirements; please see the "Fixing Failed Custom Nodes" section for additional details.
 
+## 6.2. run directory
+
 It is also possible to rename the entire "run" directory to get a clean installation of ComfyUI and its virtual environment. This method is preferred, compared to deleting the "run" directory—as it will allow us to copy the content of the various downloaded `ComfyUI/models`, `ComfyUI/custom_nodes`, generated `ComfyUI/outputs`, `ComfyUI/user`, added `ComfyUI/inputs`, and other folders present within the old "run" directory.
 If using the `BASE_DIRECTORY` environment variable, please note that some of that `run` directory content will be moved to the `BASE_DIRECTORY` specified.
 
-If using the `BASE_DIRECTORY` option and the program exit saying the `--base-directory` option does not exist, this is due to an outdated ComfyUI installation. A possible solution is to disable the opton, restart the container and use the ComfyUI-Manager to update ComfyUI. Another option is manually update the code: `cd run/ComfyUI; git pull`
+## 6.3. using BASE_DIRECTORY with an outdated ComfyUI
+
+If using the `BASE_DIRECTORY` option and the program exit saying the `--base-directory` option does not exist, this is due to an outdated ComfyUI installation. A possible solution is to disable the option, restart the container and use the ComfyUI-Manager to update ComfyUI. Another option is manually update the code: `cd run/ComfyUI; git pull`
+In some case, it is easier to create a simple `user_script.bash` to perform those steps; particularly on Unraid.
+The `run/user_script.bash` file content would be (on Unraid it would go in `/mnt/user/appdata/comfyui-nvidia/mnt`)
+
+```bash
+#!/bin/bash
+
+cd /comfy/mnt/ComfyUI
+git pull
+
+exit 0
+```
+
+Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED_GID` environment variables and to make it executable (on Unraid in the directory, run `chown nobody:users user_script.bash; chmod +x user_script.bash`)
+
+**After the process complete, you should be presented with the WebUI. Make to delete or rename the script to avoid upgrading ComfyUI at start time, and use ComfyUI Manager instead.**
 
 # 7. Changelog
 
