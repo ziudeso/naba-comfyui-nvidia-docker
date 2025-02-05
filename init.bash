@@ -236,17 +236,10 @@ echo -n "  git bin: "; which git
 
 # CUDA 12.8 special case
 if [[ "${BUILD_BASE}" == "${BUILD_BASE_RTX50xx}"* ]]; then
-  error_exit "STOPPING here: until torchaudio and torchvision are available for CUDA 12.8, we can not go further"
-  
-#  echo ""; echo "!! This is a special case, we are going to install the requirements for RTX 50xx series GPUs"
-#  echo "  -- Installation CUDA 12.8 Torch from nightly"
-#  pip3 install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
-#
-#  # https://github.com/comfyanonymous/ComfyUI/discussions/6643
-#  toremove='torchvision\|torchaudio\|spandrel'
-#  echo "  -- Creating an modified ComfyUI/requirements.txt to remove: $toremove"
-#  grep -v "$toremove" ComfyUI/requirements.txt > ${COMFYUSER_DIR}/mnt/comfyui-${BUILD_BASE}-requirements.txt
-#  grep "$toremove" ${COMFYUSER_DIR}/mnt/comfyui-${BUILD_BASE}-requirements.txt || echo "  ($toremove not found in modified requirements.txt)"
+  # https://github.com/comfyanonymous/ComfyUI/discussions/6643
+  echo ""; echo "!! This is a special case, we are going to install the requirements for RTX 50xx series GPUs"
+  echo "  -- Installation CUDA 12.8 Torch from nightly"
+  pip3 install --pre torch torchaudio torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
 fi
 
 # Install ComfyUI's requirements

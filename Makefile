@@ -15,9 +15,9 @@ COMPONENTS_DIR=components
 DOCKERFILE_DIR=Dockerfile
 
 # Get the list of all the base- files in COMPONENTS_DIR
-#DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | perl -pe 's%\.Dockerfile%%' | sort)
+DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | perl -pe 's%\.Dockerfile%%' | sort)
 # Remove CUDA 12.8 entries for the time being
-DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | perl -pe 's%\.Dockerfile%%' | sort | grep -v 12.8)
+#DOCKER_ALL=$(shell ls -1 ${COMPONENTS_DIR}/base-* | perl -pe 's%^.+/base-%%' | perl -pe 's%\.Dockerfile%%' | sort | grep -v 12.8)
 
 all:
 	@if [ `echo ${DOCKER_ALL} | wc -w` -eq 0 ]; then echo "No images candidates to build"; exit 1; fi
@@ -85,9 +85,9 @@ docker_rmi:
 ###### push -- will only proceed with existing ("present") images
 
 # user the highest numbered entry
-LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -1)
-# use the previous to last entry as the candidate (12.8 is for 50xx series GPUs, the driver is still beta)
-#LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -2 | head -1)
+#LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -1)
+# use the previous to last entry as the candidate: 12.8 is for 50xx series GPUs, not making it the default yet)
+LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -2 | head -1)
 
 LATEST_CANDIDATE=$(shell echo ${COMFYUI_CONTAINER_NAME}:${LATEST_ENTRY})
 
