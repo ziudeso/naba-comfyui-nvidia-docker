@@ -88,6 +88,7 @@ It is recommended that a container monitoring tool be available to watch the log
   - [5.4. ComfyUI Manager \& Security levels](#54-comfyui-manager--security-levels)
   - [5.5. Shell within the Docker image](#55-shell-within-the-docker-image)
   - [5.6. Additional FAQ](#56-additional-faq)
+    - [5.6.1. RTX 5080/5090 support](#561-rtx-50805090-support)
 - [6. Troubleshooting](#6-troubleshooting)
   - [6.1. Virtual environment](#61-virtual-environment)
   - [6.2. run directory](#62-run-directory)
@@ -476,6 +477,10 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 - Updating ComfyUI
 - Updating ComfyUI-Manager
 - Installing a custom node from git
+
+### 5.6.1. RTX 5080/5090 support
+
+To use the RTX 5080/5090 GPUs, you will need to make sure to install NVIDIA driver 570 or above. This driver brings support for the RTX 50xx series of GPUs and CUDA 12.8. PyTorch is also installed from the `nightly` version (until the official release of 2.7.0 with CUDA 12.8 support).
 
 # 6. Troubleshooting
 
