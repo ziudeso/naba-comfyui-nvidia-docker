@@ -34,11 +34,12 @@ For more details on driver capabilities and how to update those, please see [Set
 The `latest` tag will always point to the most up-to-date build (i.e., the most recent OS+CUDA). 
 If this version is incompatible with your container runtime, please see the list of alternative builds.
 
-| tag | aka |
-| --- | --- |
-| ubuntu22_cuda12.3.2-latest | |
-| ubuntu22_cuda12.4.1-latest | |
-| ubuntu24_cuda12.5.1-latest | latest |
+| tag | aka | note |
+| --- | --- | --- |
+| ubuntu22_cuda12.3.2-latest | | | 
+| ubuntu22_cuda12.4.1-latest | | | 
+| ubuntu24_cuda12.5.1-latest | latest | | 
+| ubuntu24_cuda12.8-latest | | RTX 50xx beta |
 
 During its first run, the container will download ComfyUI from `git` (into the `run/ComfyUI` folder), create a Python virtual environment (in `run/venv`) for all the Python packages needed by the tool, and install [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) into ComfyUI's `custom_nodes` directory. 
 This adds about 5GB of content to the installation. The download time depends on your internet connection.
