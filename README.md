@@ -208,6 +208,7 @@ services:
       - ./basedir:/basedir
     restart: unless-stopped
     environment:
+      # set WANTED_UID and WANTED_GID to your user and group as obtained with `id -u` and `id -g`
       - WANTED_UID=1000
       - WANTED_GID=1000
       - BASE_DIRECTORY=/basedir
