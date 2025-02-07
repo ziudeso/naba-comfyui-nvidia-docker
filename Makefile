@@ -33,8 +33,9 @@ ${DOCKERFILE_DIR}:
 
 ${DOCKER_ALL}: ${DOCKERFILE_DIR}
 	@echo ""; echo ""; echo "===== Building ${COMFYUI_CONTAINER_NAME}:$@"
-	@cat ${COMPONENTS_DIR}/base-$@.Dockerfile > ${DOCKERFILE_DIR}/Dockerfile-$@
-	@cat ${COMPONENTS_DIR}/part1-common.Dockerfile >> ${DOCKERFILE_DIR}/Dockerfile-$@
+	@$(eval DOCKERFILE_NAME="${DOCKERFILE_DIR}/$@.Dockerfile")
+	@cat ${COMPONENTS_DIR}/base-$@.Dockerfile > ${DOCKERFILE_NAME}
+	@cat ${COMPONENTS_DIR}/part1-common.Dockerfile >> ${DOCKERFILE_NAME}
 	@$(eval VAR_NT="${COMFYUI_CONTAINER_NAME}-$@")
 	@echo "-- Docker command to be run:"
 	@echo "docker buildx ls | grep -q ${COMFYUI_CONTAINER_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${COMFYUI_CONTAINER_NAME}\" || docker buildx create --name ${COMFYUI_CONTAINER_NAME}"  > ${VAR_NT}.cmd
@@ -43,7 +44,7 @@ ${DOCKER_ALL}: ${DOCKERFILE_DIR}
 	@echo "  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_BASE=\"$@\" \\" >> ${VAR_NT}.cmd
 	@echo "  --tag=\"${COMFYUI_CONTAINER_NAME}:$@\" \\" >> ${VAR_NT}.cmd
-	@echo "  -f ${DOCKERFILE_DIR}/Dockerfile-$@ \\" >> ${VAR_NT}.cmd
+	@echo "  -f ${DOCKERFILE_NAME} \\" >> ${VAR_NT}.cmd
 	@echo "  --load \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
 	@cat ${VAR_NT}.cmd | tee ${VAR_NT}.log.temp
