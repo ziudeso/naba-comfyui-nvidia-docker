@@ -1,6 +1,6 @@
-<h1>ComfyUI (NVIDIA) Docker</h1>
+<h2>Quick Start</h2>
 
-**Quick Start**
+**Windows users, see the "Windows: WSL2 and podman" section**
 
 Make sure you have the NVIDIA Container Toolkit installed. More details: https://blg.gkr.one/20240404-u24_nvidia_docker_podman/
 
@@ -16,10 +16,12 @@ mkdir run basedir
 docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
 
 # Using podman
-podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia docker.io/mmartial/comfyui-nvidia-docker:latest
 ```
 
 <hr>
+
+<h1>ComfyUI (NVIDIA) Docker</h1>
 
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI/tree/master) is a Stable Diffusion WebUI. 
 With the addition in August 2024 of a [Flux example](https://comfyanonymous.github.io/ComfyUI_examples/flux/), I created this container builder to test it. 
@@ -88,7 +90,8 @@ It is recommended that a container monitoring tool be available to watch the log
   - [5.4. ComfyUI Manager \& Security levels](#54-comfyui-manager--security-levels)
   - [5.5. Shell within the Docker image](#55-shell-within-the-docker-image)
   - [5.6. Additional FAQ](#56-additional-faq)
-    - [5.6.1. RTX 5080/5090 support](#561-rtx-50805090-support)
+    - [5.6.1. Windows: WSL2 and podman](#561-windows-wsl2-and-podman)
+    - [5.6.2. RTX 5080/5090 support](#562-rtx-50805090-support)
 - [6. Troubleshooting](#6-troubleshooting)
   - [6.1. Virtual environment](#61-virtual-environment)
   - [6.2. run directory](#62-run-directory)
@@ -164,7 +167,7 @@ To run the container on an NVIDIA GPU, mount the specified directory, expose onl
 
 ```bash
 mkdir run basedir
-podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia mmartial/comfyui-nvidia-docker:latest
+podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia docker.io/mmartial/comfyui-nvidia-docker:latest
 ```
 
 ## 2.3. Docker compose
@@ -478,7 +481,67 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 - Updating ComfyUI-Manager
 - Installing a custom node from git
 
-### 5.6.1. RTX 5080/5090 support
+### 5.6.1. Windows: WSL2 and podman
+
+The container can be used on Windows using WSL2. In the following, we will describe the method to use the `podman` command line interface. For Docker Desktop users, please see https://docs.docker.com/desktop/features/gpu/ for details on how to enable GPU support with Docker.
+
+First, follow the steps in Section 2 ("Getting Started with CUDA on WSL 2") of https://docs.nvidia.com/cuda/wsl-user-guide/index.html
+
+Once you have your Ubuntu Virtual Machine installed, start its terminal and follow the instructions to create your new user account (in the rest of this section we will use `USER` to refer to it, adapt as needed) and set a password (which you will use for `sudo` commands). Check your UID and GID using `id`; by default those should be `1000` and `1000`.
+
+Then, from the terminal, run the following commands (for further details on some of the steps below, see https://blg.gkr.one/20240404-u24_nvidia_docker_podman/ ):
+
+```bash
+# Update the package list & Upgrade the already installed packages
+sudo apt update && sudo apt upgrade -y
+
+# Install podman
+sudo apt install -y podman
+
+# Install the nvidia-container-toolkit
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+# Generate the Container Device Interface (CDI) for podman
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+# note that when you update the Nvidia driver, you will need to regenerate the CDI
+```
+
+Then you can confirm the CUDA version your driver supports with:
+
+```bash
+podman run --rm --device nvidia.com/gpu=all ubuntu nvidia-smi
+```
+with the latest driver, you can support CUDA 12.8 or above, which is needed for RTX 50xx GPUs.
+
+In the following, we will run the `latest` tag but you can modify this depending on the CUDA version you want to support.
+
+To run the container:
+
+```bash
+# Create the needed data directories
+# 'run' will contain your virtual environment(s), ComfyUI source code, and Hugging Face Hub data
+# 'basedir' will contain your custom nodes, input, output, user and models directories
+mkdir run basedir
+
+# Download and start the container
+# - the directories will be written with your user's UID and GID
+# - the ComfyUI-Manager security levels will be set to "normal"
+# - we will expose the WebUI to http://127.0.0.1:8188
+# please see other sections of this README.md for options
+podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia docker.io/mmartial/comfyui-nvidia-docker:latest
+```
+
+Once started, go to http://127.0.0.1:8188 and enjoy your first workflow (the bottle example). With this workflow, ComfyUI-Manager should offer to download the model. but since your browser runs on the Windows side, we will need to move the downloaded file to the Ubuntu VM. In another `Ubuntu` terminal, run (adapt `USER`): `mv /mnt/c/Users/USER/Downloads/v1-5-pruned-emaonly-fp16.safetensors basedir/models/checkpoints/`. You will see that `basedir` and `run` are owned by your `USER`.
+
+After using ComfyUI, `Ctrl+C` in the `podman` terminal will terminate the WebUI. Use the `podman run ...` command from the same folder in the Ubuntu terminal to restart it and use the same `run` and `basedir` as before.
+
+### 5.6.2. RTX 5080/5090 support
 
 To use the RTX 5080/5090 GPUs, you will need to make sure to install NVIDIA driver 570 or above. This driver brings support for the RTX 50xx series of GPUs and CUDA 12.8. PyTorch is also installed from the `nightly` version (until the official release of 2.7.0 with CUDA 12.8 support).
 
