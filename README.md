@@ -1,3 +1,25 @@
+<h1>ComfyUI (NVIDIA) Docker</h1>
+
+- runs in [containers](https://blg.gkr.one/20240501-docker101/) for enhanced host OS separation
+  - work with `docker` (and `compose`) or `podman` + `WSL2` on Windows
+- can run multiple setups with an independent `run` folder (for virtual environment management and source code) shared `basedir` folder (for user files, input, output, custom nodes, models, etc.)
+- drops privileges to a regular user/preserves user permissions with custom UID/GID mapping (the running user's `id -u` and `id -g` as specified on the command line)
+- Integrated `ComfyUI-Manager` for hassle-free updates
+  - permits modification of `ComfyUI-Manager`'s security level (`SECURITY_LEVEL`)
+- expose to Localhost-only access by default (`-p 127.0.0.1:8188:8188`)
+- built on official NVIDIA CUDA containers for optimal GPU performance
+- multiple `Ubuntu` + `CUDA` version combinations available --for older hardware: down to `CUDA 12.3.2` / for 50xx GPUs: `CUDA 12.8`-- see the tags list
+- separate `run` and `basedir` folders
+  - `run` folder is used to store the ComfyUI setup (virtual environment, source code)
+  - `basedir` folder is used to store user files, input, output, custom nodes, models, etc.
+- command-line override
+  - using the `COMFY_CMDLINE_EXTRA` environment variable to pass additional command-line arguments set during the init script
+  - ability to run `user_script.bash` from within the container for complex customizations, installations (`pip`, `apt`, ...) and command-line overrides
+- pre-built container images available on [DockerHub](https://hub.docker.com/r/mmartial/comfyui-nvidia-docker)
+  - including [Unraid](https://unraid.net) compatible images
+- open-source: build it yourself using the corresponding `Dockerfile` present in the directory of the same name and review the `init.bash` (i.e. the setup logic)
+
+
 <h2>Quick Start</h2>
 
 **Windows users, see the "Windows: WSL2 and podman" section**
@@ -204,7 +226,7 @@ services:
                 - utility
 ```
 
-This will use port 8188 (`host:container`). Use a `run` directory local to the directory where this `compose.yml` is, and specify the `WANTED_UID` and `WANTED_GID` to 1000 (adapt as needed). Make sure to create the `run` and `basedir` directories as the user with the desired uid and gid before running the docker-compose for the first time.
+This will use port 8188 (`host:container`). Use a `run` directory local to the directory where this `compose.yml` is, and specify the `WANTED_UID` and `WANTED_GID` to 1000 (adapt to reflect the user and group you want to run as, which can be obtained using the `id` command in a terminal). Make sure to create the `run` and `basedir` directories as the user with the desired uid and gid before running the docker-compose for the first time.
 
 Start it with `docker compose up` (with `-detached` to run the container in the background)
 
