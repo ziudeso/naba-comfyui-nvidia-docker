@@ -585,14 +585,14 @@ The script logic is based on the `BASE_DIRECTORY` environment variable alone. Fo
 
 Indepent of the method used the core logic is the same (the example will specify the `output` folder):
 1. you will need to make sure a new folder is mounted within the container (ex: `docker run ... -v /preferredlocation/output:/output`)
-2. tell the ComfyUI command line to use that location for its outputs: `python3 ./main.py [...] --output_directory /output`
+2. tell the ComfyUI command line to use that location for its outputs: `python3 ./main.py [...] --output-directory /output`
 3. (optional) make sure to copy the already existing content of `output` to the new location if you want consitency.
 
 Please note that an `output` folder will still exist in the `basedir` location (per the `BASE_DIRECTORY` logic) but the comamnd line option will tell Confy to override it.
 
 For Unraid users, those steps can done by editing the template from the `Docker` tab, `Edit`ing the container and using `Add another Path, Port, Variable, Label or Device` to:
-1. add a new `Path` entry ((name it `output directory`) with a `Container Path` with value `/output`, a `Host Path` with your selected lcoation, for example `/preferredlocation/output`, and an `Access Mode` of `Read/Write`.
-2. edit the existing `COMFY_CMDLINE_EXTRA` variable to add the `--output_directory /output` option.
+1. add a new `Path` entry (name it `output directory`) with a `Container Path` with value `/output`, a `Host Path` with your selected lcoation, for example `/preferredlocation/output`, and an `Access Mode` of `Read/Write`.
+2. edit the existing `COMFY_CMDLINE_EXTRA` variable to add the `--output-directory /output` option.
 
 # 6. Troubleshooting
 
