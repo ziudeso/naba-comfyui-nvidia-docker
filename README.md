@@ -114,6 +114,7 @@ It is recommended that a container monitoring tool be available to watch the log
   - [5.6. Additional FAQ](#56-additional-faq)
     - [5.6.1. Windows: WSL2 and podman](#561-windows-wsl2-and-podman)
     - [5.6.2. RTX 5080/5090 support](#562-rtx-50805090-support)
+    - [5.6.3. Specifying alternate folder location (ex: --output\_directory) with BASE\_DIRECTORY](#563-specifying-alternate-folder-location-ex---output_directory-with-base_directory)
 - [6. Troubleshooting](#6-troubleshooting)
   - [6.1. Virtual environment](#61-virtual-environment)
   - [6.2. run directory](#62-run-directory)
@@ -567,6 +568,31 @@ After using ComfyUI, `Ctrl+C` in the `podman` terminal will terminate the WebUI.
 ### 5.6.2. RTX 5080/5090 support
 
 To use the RTX 5080/5090 GPUs, you will need to make sure to install NVIDIA driver 570 or above. This driver brings support for the RTX 50xx series of GPUs and CUDA 12.8. PyTorch is also installed from the `nightly` version (until the official release of 2.7.0 with CUDA 12.8 support).
+
+### 5.6.3. Specifying alternate folder location (ex: --output_directory) with BASE_DIRECTORY
+
+The `BASE_DIRECTORY` environment variable can be used to specify an alternate folder location for `input`, `output`, `temp`, `user`, `models` and `custom_nodes`.
+The ComfyUI CLI provides means to specify the location of some of those folders from the command line.
+- `--output-directory` for `output`
+- `--input-directory` for `input`
+- `--temp-directory` for `temp`
+- `--user-directory` for `user`
+Each one of those option overrides `--base-directory`.
+
+The logic in `init.bash` moves the content of `input`, `output`, `temp`, `user` and `models` to the specified `BASE_DIRECTORY` the first time it is used if the destination folder does not exist.
+
+The script logic is based on the `BASE_DIRECTORY` environment variable alone. For end-users who prefer to use one of those alternate folder command lines, those can be added to either the `COMFY_CMDLINE_EXTRA` environment variable or the `user_script.bash` script (please refer to the other sections of this document that describe those options).
+
+Indepent of the method used the core logic is the same (the example will specify the `output` folder):
+1. you will need to make sure a new folder is mounted within the container (ex: `docker run ... -v /preferredlocation/output:/output`)
+2. tell the ComfyUI command line to use that location for its outputs: `python3 ./main.py [...] --output_directory /output`
+3. (optional) make sure to copy the already existing content of `output` to the new location if you want consitency.
+
+Please note that an `output` folder will still exist in the `basedir` location (per the `BASE_DIRECTORY` logic) but the comamnd line option will tell Confy to override it.
+
+For Unraid users, those steps can done by editing the template from the `Docker` tab, `Edit`ing the container and using `Add another Path, Port, Variable, Label or Device` to:
+1. add a new `Path` entry ((name it `output directory`) with a `Container Path` with value `/output`, a `Host Path` with your selected lcoation, for example `/preferredlocation/output`, and an `Access Mode` of `Read/Write`.
+2. edit the existing `COMFY_CMDLINE_EXTRA` variable to add the `--output_directory /output` option.
 
 # 6. Troubleshooting
 
