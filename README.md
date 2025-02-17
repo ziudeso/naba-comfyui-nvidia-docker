@@ -628,6 +628,7 @@ Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED
 
 # 7. Changelog
 
+- 20250216: Fix issue with empty `BASE_DIRECTORY` variable
 - 20250202: Added `BASE_DIRECTORY` variable
 - 20250116: Happy 2nd Birthday ComfyUI -- added multiple builds for different base Ubuntu OS and CUDA combinations + added `ffmpeg`  into the base container.
 - 20250109: Integrated `SECURITY_LEVELS` within the docker arguments + added `libGL` into the base container.

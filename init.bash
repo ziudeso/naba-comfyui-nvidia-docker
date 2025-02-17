@@ -29,6 +29,15 @@ cmd_seclvl=$3
 cmd_basedir=$4
 cmd_cmdline_base=$5
 cmd_cmdline_extra=$6
+echo "  - script_fullname: ${script_fullname}"
+echo "  - cmd_wuid: ${cmd_wuid}"
+echo "  - cmd_wgid: ${cmd_wgid}"
+echo "  - cmd_seclvl: ${cmd_seclvl}"
+echo "  - cmd_basedir: ${cmd_basedir}"
+echo "  - cmd_cmdline_base: ${cmd_cmdline_base}"
+echo "  - cmd_cmdline_extra: ${cmd_cmdline_extra}"
+echo "======================================"
+ignore_value="VALUE_TO_IGNORE"
 
 # everyone can read our files by default
 umask 0022
@@ -74,7 +83,8 @@ if [ -z "$SECURITY_LEVEL" ]; then SECURITY_LEVEL=$cmd_seclvl; fi
 if [ -z "$SECURITY_LEVEL" ]; then echo "-- No SECURITY_LEVEL provided, using comfy default of normal"; SECURITY_LEVEL="normal"; fi
 
 if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$cmd_basedir; fi
-if [ ! -z "$BASE_DIRECTORY" ]; then if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY requested but not found or not a directory ($BASE_DIRECTORY)"; fi; fi
+if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$ignore_value; fi
+if [ ! -z "$BASE_DIRECTORY" ]; then if [ $BASE_DIRECTORY != $ignore_value ] && [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY requested but not found or not a directory ($BASE_DIRECTORY)"; fi; fi
 
 # The script is started as comfy
 # if the UID/GID are not correct, we create a new comfytoo user with the correct UID/GID which will restart the script
@@ -158,6 +168,7 @@ if [ ! -d "ComfyUI" ]; then error_exit "ComfyUI not found"; fi
 it=ComfyUI/.testfile && rm -f $it || error_exit "Failed to write to ComfyUI directory as the comfy user"
 
 # Check on BASE_DIRECTORY
+if [ "$BASE_DIRECTORY" == "$ignore_value" ]; then BASE_DIRECTORY=""; fi
 if [ ! -z "$BASE_DIRECTORY" ]; then 
   if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY ($BASE_DIRECTORY) not found or not a directory"; fi
   it=$BASE_DIRECTORY/.testfile && touch $it && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"

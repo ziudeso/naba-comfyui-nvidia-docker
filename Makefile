@@ -7,7 +7,7 @@ DOCKER_BUILD_ARGS=
 ##DOCKER_BUILD_ARGS="--no-cache"
 
 #BUILD_DATE=$(shell printf '%(%Y%m%d)T' -1)
-BUILD_DATE=20250202
+BUILD_DATE=20250216
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
 
