@@ -4,10 +4,8 @@ SHELL := /bin/bash
 DOCKER_CMD=docker
 DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
 DOCKER_BUILD_ARGS=
-##DOCKER_BUILD_ARGS="--no-cache"
 
-#BUILD_DATE=$(shell printf '%(%Y%m%d)T' -1)
-BUILD_DATE=20250216
+COMFYUI_NVIDIA_DOCKER_VERSION=comfytoo
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
 
@@ -41,7 +39,7 @@ ${DOCKER_ALL}: ${DOCKERFILE_DIR}
 	@echo "docker buildx ls | grep -q ${COMFYUI_CONTAINER_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${COMFYUI_CONTAINER_NAME}\" || docker buildx create --name ${COMFYUI_CONTAINER_NAME}"  > ${VAR_NT}.cmd
 	@echo "docker buildx use ${COMFYUI_CONTAINER_NAME} || exit 1" >> ${VAR_NT}.cmd
 	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain --platform linux/amd64 ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
-	@echo "  --build-arg BUILD_DATE=\"${BUILD_DATE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg COMFYUI_NVIDIA_DOCKER_VERSION=\"${COMFYUI_NVIDIA_DOCKER_VERSION}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_BASE=\"$@\" \\" >> ${VAR_NT}.cmd
 	@echo "  --tag=\"${COMFYUI_CONTAINER_NAME}:$@\" \\" >> ${VAR_NT}.cmd
 	@echo "  -f ${DOCKERFILE_NAME} \\" >> ${VAR_NT}.cmd
@@ -95,15 +93,15 @@ LATEST_CANDIDATE=$(shell echo ${COMFYUI_CONTAINER_NAME}:${LATEST_ENTRY})
 docker_tag:
 	@if [ `echo ${DOCKER_PRESENT} | wc -w` -eq 0 ]; then echo "No images to tag"; exit 1; fi
 	@echo "== About to tag:"
-	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; echo "  ++ $$i -> $$image_out1"; echo "  ++ $$i -> $$image_out2"; done
+	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${COMFYUI_NVIDIA_DOCKER_VERSION}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; echo "  ++ $$i -> $$image_out1"; echo "  ++ $$i -> $$image_out2"; done
 	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; echo "  ++ ${LATEST_CANDIDATE} -> $$image_out"; else echo "  -- Unable to find latest candidate: ${LATEST_CANDIDATE}"; fi
 	@echo ""
 	@echo "tagging for hub.docker.com upload -- Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
-	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${BUILD_DATE}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; docker tag $$i $$image_out1; docker tag $$i $$image_out2; done
+	@for i in ${DOCKER_PRESENT}; do image_out1="${DOCKERHUB_REPO}/$$i-${COMFYUI_NVIDIA_DOCKER_VERSION}"; image_out2="${DOCKERHUB_REPO}/$$i-latest"; docker tag $$i $$image_out1; docker tag $$i $$image_out2; done
 	@if echo ${DOCKER_PRESENT} | grep -q ${LATEST_CANDIDATE}; then image_out="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; docker tag ${LATEST_CANDIDATE} $$image_out; fi
 
-DOCKERHUB_READY=$(shell for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:$$i"; image1=$$image-${BUILD_DATE}; image2=$$image-latest; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image1; then echo $$image1; fi; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image2; then echo $$image2; fi; done)
+DOCKERHUB_READY=$(shell for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:$$i"; image1=$$image-${COMFYUI_NVIDIA_DOCKER_VERSION}; image2=$$image-latest; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image1; then echo $$image1; fi; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image2; then echo $$image2; fi; done)
 DOCKERHUB_READY_LATEST=$(shell image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image; then echo $$image; else echo ""; fi)
 
 
