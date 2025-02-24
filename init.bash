@@ -86,18 +86,6 @@ if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$cmd_basedir; fi
 if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$ignore_value; fi
 if [ ! -z "$BASE_DIRECTORY" ]; then if [ $BASE_DIRECTORY != $ignore_value ] && [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY requested but not found or not a directory ($BASE_DIRECTORY)"; fi; fi
 
-# The script is started as comfy
-# if the UID/GID are not correct, we create a new comfytoo user with the correct UID/GID which will restart the script
-# after the script restart we restart again as comfy
-if [ "A${whoami}" == "Acomfytoo" ]; then
-  echo "-- Not running as comfy, will try to switch to comfy (Docker USER)"
-  # Make the comfy user (the Docker USER) have the proper UID/GID as well
-  sudo usermod -u ${WANTED_UID} -o -g ${WANTED_GID} comfy
-  # restart the script as comfy (Docker USER) with the correct UID/GID this time
-  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
-  ok_exit "Clean exit"
-fi
-
 it=/etc/image_base.txt
 if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 echo "-- Base image details (from $it):"; cat $it
@@ -117,37 +105,35 @@ BUILD_BASE_RTX50xx="ubuntu24_cuda12.8"
 echo "-- BUILD_BASE: \"${BUILD_BASE}\""
 if test -z ${BUILD_BASE}; then error_exit "Empty BUILD_BASE variable"; fi
 
-# we are running with some given UID/GID, do we need to modify UID/GID
-current_uid=`id -u`
-current_gid=`id -g`
+new_gid=`id -g`
+new_uid=`id -u`
+echo "== user ($whoami)"
+echo "  uid: $new_uid / WANTED_UID: $WANTED_UID"
+echo "  gid: $new_gid / WANTED_GID: $WANTED_GID"
 
-do_change="False"
-
-if [ ! -z "$WANTED_GID" -a "$WANTED_GID" != "$current_gid" ]; then
-  echo "-- Will attempt to create a new user with GID ${WANTED_GID}"
-  do_change="True"
-fi
-if [ ! -z "$WANTED_UID" -a "$WANTED_UID" != "$current_uid" ]; then
-  echo "-- Will attempt to create a new user with UID ${WANTED_UID}"
-  do_change="True"
-fi
-
-if [ $do_change == "True" ]; then
-  # Make a "comfytoo" user
-  sudo chown -R ${WANTED_UID}:${WANTED_GID} ${COMFYUSER_DIR}
-  (getent group ${WANTED_GID} || (sudo addgroup --group --gid ${WANTED_GID} comfytoo || true))
-  sudo useradd -u ${WANTED_UID} -o -g ${WANTED_GID} -s /bin/bash -d ${COMFYUSER_DIR} -M comfytoo
-  sudo adduser comfytoo sudo
-  # Reload the script to bypass limitation (and exit)
-  sudo su comfytoo $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
+# The script is started as comfytoo
+# We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
+if [ "A${whoami}" == "Acomfytoo" ]; then 
+  echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
+  # using usermod for the already create comfy user, knowing it is not already in use
+  # per usermod manual: "You must make certain that the named user is not executing any processes when this command is being executed"
+  sudo groupmod -o -g ${WANTED_GID} comfy || error_exit "Failed to set GID of comfy user"
+  sudo usermod -o -u ${WANTED_UID} comfy || error_exit "Failed to set UID of comfy user"
+  sudo chown -R ${WANTED_UID}:${WANTED_GID} /home/comfy || error_exit "Failed to set owner of /home/comfy"
+  sudo chown ${WANTED_UID}:${WANTED_GID} ${COMFYUSER_DIR} || error_exit "Failed to set owner of ${COMFYUSER_DIR}"
+  # restart the script as comfy (Docker USER) with the correct UID/GID this time
+  sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
   ok_exit "Clean exit"
 fi
 
-new_gid=`id -g`
-new_uid=`id -u`
-echo "== user -- uid: $new_uid / gid: $new_gid"
-if [ ! -z "$WANTED_GID" -a "$WANTED_GID" != "$new_gid" ]; then echo "Wrong GID ($new_gid), exiting"; exit 0; fi
-if [ ! -z "$WANTED_UID" -a "$WANTED_UID" != "$new_uid" ]; then echo "Wrong UID ($new_uid), exiting"; exit 0; fi
+# The script is started as comfy
+# if the UID/GID are not correct, fail: comfy MUST be running with the correct UID/GID
+if [ "A${whoami}" == "Acomfy" ]; then
+  if [ "$WANTED_GID" != "$new_gid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${current_uid} GID ${current_gid}"; fi
+  if [ "$WANTED_UID" != "$new_uid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${current_uid} GID ${current_gid}"; fi
+else
+  error_exit "The script cam only be run the comfy or comfytoo users"
+fi
 
 # We are now running as comfy
 echo ""; echo "== Running as comfy"
