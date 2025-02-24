@@ -111,9 +111,9 @@ echo "== user ($whoami)"
 echo "  uid: $new_uid / WANTED_UID: $WANTED_UID"
 echo "  gid: $new_gid / WANTED_GID: $WANTED_GID"
 
-# The script is started as comfytoo
-# We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
 if [ "A${whoami}" == "Acomfytoo" ]; then 
+  # The script is started as comfytoo -- UID/GID 1025/1025 do not exist by default in Ubuntu so we can check the whoami value
+  # We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
   echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
   # using usermod for the already create comfy user, knowing it is not already in use
   # per usermod manual: "You must make certain that the named user is not executing any processes when this command is being executed"
@@ -126,14 +126,11 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   ok_exit "Clean exit"
 fi
 
-# The script is started as comfy
-# if the UID/GID are not correct, fail: comfy MUST be running with the correct UID/GID
-if [ "A${whoami}" == "Acomfy" ]; then
-  if [ "$WANTED_GID" != "$new_gid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${current_uid} GID ${current_gid}"; fi
-  if [ "$WANTED_UID" != "$new_uid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${current_uid} GID ${current_gid}"; fi
-else
-  error_exit "The script cam only be run the comfy or comfytoo users"
-fi
+# If we are here, the script is started as comfy
+# because the whoami value can be any existing user, we can not check against it
+# if the UID/GID are not correct, fail: at this point we MUST be running with the correct UID/GID
+if [ "$WANTED_GID" != "$new_gid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${new_uid} GID ${new_gid}"; fi
+if [ "$WANTED_UID" != "$new_uid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${new_uid} GID ${new_gid}"; fi
 
 # We are now running as comfy
 echo ""; echo "== Running as comfy"
