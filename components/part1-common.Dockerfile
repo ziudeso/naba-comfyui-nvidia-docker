@@ -61,16 +61,12 @@ RUN groupadd -g 1024 comfy \
 
 # The comfy (resp. comfytoo) user will have UID 1024 (resp. 1025), 
 # be part of the comfy (resp. comfytoo) and users groups and be sudo capable (passwordless) 
-RUN useradd -u 1024 -U -d /home/comfy -g comfy -s /bin/bash -m comfy \
+RUN useradd -u 1024 -d /home/comfy -g comfy -s /bin/bash -m comfy \
     && usermod -G users comfy \
     && adduser comfy sudo
-RUN useradd -u 1025 -U -d /home/comfytoo -g comfy -s /bin/bash -m comfytoo \
+RUN useradd -u 1025 -d /home/comfytoo -g comfytoo -s /bin/bash -m comfytoo \
     && usermod -G users comfytoo \
     && adduser comfytoo sudo
-
-# We start as comfytoo and will switch to the comfy user AFTER the container is up
-# and after having altered the comfy details to match the requested UID/GID
-USER comfytoo
 
 ENV COMFYUSER_DIR="/comfy"
 RUN mkdir -p ${COMFYUSER_DIR}
@@ -83,5 +79,9 @@ EXPOSE 8188
 ARG COMFYUI_NVIDIA_DOCKER_VERSION="unknown"
 LABEL comfyui-nvidia-docker-build=${COMFYUI_NVIDIA_DOCKER_VERSION}
 RUN echo "COMFYUI_NVIDIA_DOCKER_VERSION: ${COMFYUI_NVIDIA_DOCKER_VERSION}" | tee -a ${BUILD_FILE}
+
+# We start as comfytoo and will switch to the comfy user AFTER the container is up
+# and after having altered the comfy details to match the requested UID/GID
+USER comfytoo
 
 CMD [ "/comfyui-nvidia_init.bash" ]
