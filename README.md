@@ -52,8 +52,7 @@ This container was built to benefit from the process isolation that containers b
 The container size (usually over 4GB) contains the required components on an Ubuntu image with Nvidia CUDA and CuDNN (the base container is available from Nvidia's DockerHub); we add the requirements components to support an installation of ComfyUI.
 
 Multiple images are available. Each image's name contains a tag reflecting its core components. For example, `ubuntu24_cuda12.5.1` is based on Ubuntu 24.04 with CUDA 12.5.1. Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and will not be able to run the CUDA 12.4.1 or 12.5.1 versions. The recently released 570 driver supports up to CUDA 12.8 and RTX 50xx GPUs.
-Use the `nvidia-smi` command on your system to obtain the `CUDA Version:` entry in the produced table's header.
-For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
+Use the `nvidia-smi` command on your system to obtain the `CUDA Version:` entry. It will show you the maximum CUDA version supported by your driver. If the printout shows `CUDA Version: 12.6`, your driver will support up to the `cuda12.5.1` version of the container (below the maximum CUDA version supported by the driver) but not `cuda12.8`. With this information, check for a usable `tag`  in the table below.
 
 The `latest` tag will always point to the most up-to-date build (i.e., the most recent OS+CUDA). 
 If this version is incompatible with your container runtime, please see the list of alternative builds.
@@ -64,6 +63,9 @@ If this version is incompatible with your container runtime, please see the list
 | ubuntu22_cuda12.4.1-latest | | | 
 | ubuntu24_cuda12.5.1-latest | latest | | 
 | ubuntu24_cuda12.8-latest | | RTX 50xx beta |
+
+For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
+
 
 During its first run, the container will download ComfyUI from `git` (into the `run/ComfyUI` folder), create a Python virtual environment (in `run/venv`) for all the Python packages needed by the tool, and install [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) into ComfyUI's `custom_nodes` directory. 
 This adds about 5GB of content to the installation. The download time depends on your internet connection.
