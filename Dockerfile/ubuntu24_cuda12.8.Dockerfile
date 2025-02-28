@@ -62,25 +62,40 @@ ARG BUILD_BASE="unknown"
 LABEL comfyui-nvidia-docker-build-from=${BUILD_BASE}
 RUN it="/etc/build_base.txt"; echo ${BUILD_BASE} > $it && chmod 555 $it
 
+# Place the init script in / so it can be found by the entrypoint
+COPY --chmod=555 init.bash /comfyui-nvidia_init.bash
+
 ##### ComfyUI preparation
-# The comfy user will have UID 1024 and GID 1024
-ENV COMFYUSER_DIR="/comfy"
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
-    && useradd -u 1024 -U -d ${COMFYUSER_DIR} -s /bin/bash -m comfy \
+# Every sudo group user does not need a password
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Create a new group for the comfy and comfytoo users
+RUN groupadd -g 1024 comfy \ 
+    && groupadd -g 1025 comfytoo
+
+# The comfy (resp. comfytoo) user will have UID 1024 (resp. 1025), 
+# be part of the comfy (resp. comfytoo) and users groups and be sudo capable (passwordless) 
+RUN useradd -u 1024 -d /home/comfy -g comfy -s /bin/bash -m comfy \
     && usermod -G users comfy \
-    && adduser comfy sudo \
-    && test -d ${COMFYUSER_DIR}
+    && adduser comfy sudo
+RUN useradd -u 1025 -d /home/comfytoo -g comfytoo -s /bin/bash -m comfytoo \
+    && usermod -G users comfytoo \
+    && adduser comfytoo sudo
+
+ENV COMFYUSER_DIR="/comfy"
+RUN mkdir -p ${COMFYUSER_DIR}
 RUN it="/etc/comfyuser_dir"; echo ${COMFYUSER_DIR} > $it && chmod 555 $it
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 
 EXPOSE 8188
 
-USER comfy
-WORKDIR ${COMFYUSER_DIR}
-COPY --chown=comfy:comfy --chmod=555 init.bash comfyui-nvidia_init.bash
+ARG COMFYUI_NVIDIA_DOCKER_VERSION="unknown"
+LABEL comfyui-nvidia-docker-build=${COMFYUI_NVIDIA_DOCKER_VERSION}
+RUN echo "COMFYUI_NVIDIA_DOCKER_VERSION: ${COMFYUI_NVIDIA_DOCKER_VERSION}" | tee -a ${BUILD_FILE}
 
-ARG BUILD_DATE="unknown"
-LABEL comfyui-nvidia-docker-build=${BUILD_DATE}
+# We start as comfytoo and will switch to the comfy user AFTER the container is up
+# and after having altered the comfy details to match the requested UID/GID
+USER comfytoo
 
-CMD [ "./comfyui-nvidia_init.bash" ]
+CMD [ "/comfyui-nvidia_init.bash" ]

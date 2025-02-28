@@ -157,7 +157,10 @@ The use of the `basedir` is recommended. This folder will be populated at run ti
 This is possible because of a new CLI option `--basedir` that was added to the code at the end of January 2025. This option will not be available unless ComfyUI is updated for existing installations.
 
 When starting, the container image executes the `init.bash` script that performs a few operations:
-- Ensure we can use the `WANTED_UID` and `WANTED_GID` as the `comfy` user (the user set to run the container),
+- When starting, the container is using the `comfytoo` user. This user has UID/GID 1025/1025 (ie not a value existing by default in a default Ubuntu installation). 
+  - As the `sudo` capable `comfytoo` user, the script will modify the existing `comfy` user to use the `WANTED_UID` and `WANTED_GID`
+  - Then, it will re-start the initialization script by becoming the newly modified `comfy` user (which can write in the `run` and `basedir` folders with the provided `WANTED_UID` and `WANTED_GID`).
+- After restarting as the `comfy` user...
 - Obtain the latest version of ComfyUI from GitHub if not already present in the mounted `run` folder.
 - Create the virtual environment (`venv`)  if one does not already exist
   - if one exists, confirm it is the one for this OS+CUDA pair
@@ -418,7 +421,7 @@ If the file is not executable, the tool will attempt to make it executable, but 
 
 ### 5.3.1. WANTED_UID and WANTED_GID
 
-The Linux User ID (`uid`) and Group ID (`gid`) will be used by the `comfy` user within the container.
+The `WANTED_UID` and `WANTED_GID` environment variables will be used to set the `comfy` user within the container.
 It is recommended that those be set to the end-user's `uid` and `gid` to allow the addition of files, models, and other content within the `run` directory.
 Content to be added within the `run` directory must be created with the `uid` and `gid`.
 
@@ -495,7 +498,9 @@ For example: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py show ins
 
 ## 5.5. Shell within the Docker image
 
-Depending on your `WANTED_UID` and `WANTED_GID`, when starting a `docker exec` (or getting a `bash` terminal from `docker compose`), it is possible that the shell is started with incorrect permissions (we will see a `bash: /comfy/.bashrc: Permission denied` error). The `comfy` user is `sudo`-able: run `sudo su comfytoo` to get the proper UID/GID.
+When starting a `docker exec -it comfyui-nvidia /bin/bash` (or getting a `bash` terminal from `docker compose`), you will be logged in as the `comfytoo` user.
+Switch to the `comfy` user with: `sudo su -l comfy`.
+As the `comfy` user you will be using the `WANTED_UID` and `WANTED_GID` provided. You will be able to `cd` into the mounted locations for the `run` and `basedir` folders, `source /comfy/mnt/venv/bin/activate` to get the virtual environment activated (allowing you to perfom `pip3 install` operations), and other operations that the `comfy` user is allowed to perform.
 
 
 ## 5.6. Additional FAQ
@@ -628,6 +633,7 @@ Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED
 
 # 7. Changelog
 
+- 20250227: Simplified user switching logic using the `comfytoo` user as the default entry point user that will set up the `comfy` user
 - 20250216: Fix issue with empty `BASE_DIRECTORY` variable
 - 20250202: Added `BASE_DIRECTORY` variable
 - 20250116: Happy 2nd Birthday ComfyUI -- added multiple builds for different base Ubuntu OS and CUDA combinations + added `ffmpeg`  into the base container.
