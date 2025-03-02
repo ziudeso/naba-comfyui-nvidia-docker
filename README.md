@@ -501,9 +501,22 @@ For example: `python3 /comfy/mnt/custom_nodes/ComfyUI-Manager/cm-cli.py show ins
 ## 5.5. Shell within the Docker image
 
 When starting a `docker exec -it comfyui-nvidia /bin/bash` (or getting a `bash` terminal from `docker compose`), you will be logged in as the `comfytoo` user.
-Switch to the `comfy` user with: `sudo su -l comfy`.
-As the `comfy` user you will be using the `WANTED_UID` and `WANTED_GID` provided. You will be able to `cd` into the mounted locations for the `run` and `basedir` folders, `source /comfy/mnt/venv/bin/activate` to get the virtual environment activated (allowing you to perfom `pip3 install` operations), and other operations that the `comfy` user is allowed to perform.
 
+Switch to the `comfy` user with:
+```bash
+sudo su -l comfy
+```
+
+As the `comfy` user you will be using the `WANTED_UID` and `WANTED_GID` provided. 
+You will be able to `cd` into the mounted locations for the `run` and `basedir` folders. 
+
+```bash
+source /comfy/mnt/venv/bin/activate
+```
+
+to get the virtual environment activated (allowing you to perfom `pip3 install` operations as those will be done within the `run` folder, so outside of the container), and other operations that the `comfy` user is allowed to perform.
+
+**Note:** as a reminder the `comfy` user is `sudo` capable, but `apt` commands might not persist a container restart, use the `user_script.bash` method to perform `apt` installs when the container is started.
 
 ## 5.6. Additional FAQ
 
