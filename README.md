@@ -1,7 +1,7 @@
 <h1>ComfyUI (NVIDIA) Docker</h1>
 
 - runs in [containers](https://blg.gkr.one/20240501-docker101/) for enhanced host OS separation
-  - work with `docker` (and `compose`) or `podman` + `WSL2` on Windows
+  - work with `docker` (and `compose`) or `podman` using `Windows Subsystem for Linux 2` (WSL2) on Windows (using a Linux Guest Virtual Machine on your Windows host)
 - can run multiple setups with an independent `run` folder (for virtual environment management and source code) shared `basedir` folder (for user files, input, output, custom nodes, models, etc.)
 - drops privileges to a regular user/preserves user permissions with custom UID/GID mapping (the running user's `id -u` and `id -g` as specified on the command line)
 - Integrated `ComfyUI-Manager` for hassle-free updates
@@ -514,7 +514,16 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 
 ### 5.6.1. Windows: WSL2 and podman
 
-The container can be used on Windows using WSL2. In the following, we will describe the method to use the `podman` command line interface. For Docker Desktop users, please see https://docs.docker.com/desktop/features/gpu/ for details on how to enable GPU support with Docker.
+The container can be used on Windows using "Windows Subsystem for Linux 2" (WSL2). 
+For additional details on WSL, please read https://learn.microsoft.com/en-us/windows/wsl/about
+For additional details on podman, please read https://docs.podman.io/latest/getting_started/
+
+WSL2 is a Linux guest Virtual Machine on a Windows host (for a slightly longer understanding of what this means, please see the first section of https://blg.gkr.one/20240501-docker101/).
+The started container is Linux based (Ubuntu Linux) that will perform a full installation of ComfyUI from sources.
+Some experience with the Linux and Python command line interface is relevant for any modifictions of the virtual environment of container post container start.
+
+
+In the following, we will describe the method to use the `podman` command line interface. For Docker Desktop users, please see https://docs.docker.com/desktop/features/gpu/ for details on how to enable GPU support with Docker.
 
 First, follow the steps in Section 2 ("Getting Started with CUDA on WSL 2") of https://docs.nvidia.com/cuda/wsl-user-guide/index.html
 
