@@ -122,9 +122,9 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
   # The script is started as comfytoo -- UID/GID 1025/1025
 
-  if [ ! -z $FORCE_CHMOD ]; then # any value works, empty value means disabled
+  if [ ! -z $FORCE_CHOWN ]; then # any value works, empty value means disabled
     echo "-- Force user mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
-    sudo touch /etc/comfy_force_chmod
+    sudo touch /etc/comfy_force_chown
   fi
 
   # We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
@@ -156,14 +156,18 @@ dir_validate() { # arg1 = directory to validate / arg2 = "mount" or ""; a "mount
 
   if [ ! -d "$testdir" ]; then error_exit "Directory $testdir not found (or not a directory)"; fi
 
-  if [ "A$2" == "A" ] && [ -f /etc/comfy_force_chmod ]; then
+  if [ "A$2" == "A" ] && [ -f /etc/comfy_force_chown ]; then
     echo "  ++ Attempting to recursively set ownership of $testdir to ${WANTED_UID}:${WANTED_GID} (might take a long time)"
     sudo chown -R ${WANTED_UID}:${WANTED_GID} "$testdir" || error_exit "Failed to set owner of $testdir"
   fi
 
   # check if the directory is owned by WANTED_UID/WANTED_GID
   if [ "$(stat -c %u:%g "$testdir")" != "${WANTED_UID}:${WANTED_GID}" ]; then
-    error_exit "Directory $testdir owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$testdir")"
+    xtra_txt=" -- recommended to start with the FORCE_CHOWN=yes environment varable enabled"
+    if [ "A$2" == "Amount" ]; then
+      xtra_txt=" -- FORCE_CHOWN will not work for this folder, it is a PATH mounted at container start"
+    fi
+    error_exit "Directory $testdir owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$testdir")$xtra_txt"
   fi
 
   if [ ! -w "$testdir" ]; then error_exit "Directory $testdir not writeable"; fi
