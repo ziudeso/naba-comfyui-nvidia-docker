@@ -122,9 +122,9 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
   # The script is started as comfytoo -- UID/GID 1025/1025
 
-  if [ -z $FORCE_USER ]; then
-    echo "-- Force user mode disabled, will not force change directory ownership as comfy user during script rerun"
-    sudo rn -f /etc/comfy_force_user
+  if [ ! -z $FORCE_CHMOD ]; then # any value works, empty value means disabled
+    echo "-- Force user mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
+    sudo touch /etc/comfy_force_chmod
   fi
 
   # We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
@@ -151,30 +151,31 @@ echo ""; echo "== Running as comfy"
 
 ########## 'comfy' specific section below
 
-dir_validate() {
-  if [ ! -d "$1" ]; then error_exit "Directory $1 not found (or not a directory)"; fi
-  # check if the base directory is owned by WANTED_UID/WANTED_GID
-  if [ "$(stat -c %u:%g "$1")" != "${WANTED_UID}:${WANTED_GID}" ]; then
-    echo "  -- $1 folder is owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$1")"
-    # "force" will attempt to fix the owner of the given directory, limit use to sub-folders created by the script
-    if [ -f /etc/comfy_force_user ] && [ "A$2" == "Aforce" ]; then 
-      echo "  ++ Attempting to set owner of $1 to ${WANTED_UID}:${WANTED_GID}"
-      sudo chown -R ${WANTED_UID}:${WANTED_GID} "$1" || error_exit "Failed to set owner of $1"
-      dir_validate "$1"
-    else
-      error_exit "Directory $1 owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$1")"
-    fi
+dir_validate() { # arg1 = directory to validate / arg2 = "mount" or ""; a "mount" can not be chmod'ed
+  testdir=$1
+
+  if [ ! -d "$testdir" ]; then error_exit "Directory $testdir not found (or not a directory)"; fi
+
+  if [ "A$2" == "A" ] && [ -f /etc/comfy_force_chmod ]; then
+    echo "  ++ Attempting to recursively set ownership of $testdir to ${WANTED_UID}:${WANTED_GID} (might take a long time)"
+    sudo chown -R ${WANTED_UID}:${WANTED_GID} "$testdir" || error_exit "Failed to set owner of $testdir"
   fi
-  if [ ! -w "$1" ]; then error_exit "Directory $1 not writeable"; fi
-  if [ ! -x "$1" ]; then error_exit "Directory $1 not executable"; fi
-  if [ ! -r "$1" ]; then error_exit "Directory $1 not readable"; fi
+
+  # check if the directory is owned by WANTED_UID/WANTED_GID
+  if [ "$(stat -c %u:%g "$testdir")" != "${WANTED_UID}:${WANTED_GID}" ]; then
+    error_exit "Directory $testdir owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$testdir")"
+  fi
+
+  if [ ! -w "$testdir" ]; then error_exit "Directory $testdir not writeable"; fi
+  if [ ! -x "$testdir" ]; then error_exit "Directory $testdir not executable"; fi
+  if [ ! -r "$testdir" ]; then error_exit "Directory $testdir not readable"; fi
 }
 
 ## Path: ${COMFYUSER_DIR}/mnt
 echo "== Testing write access as the comfy user to the run directory"
 it_dir="${COMFYUSER_DIR}/mnt"
-dir_validate "${it_dir}" # not forcing the base directory here
-it=$it_dir/.testfile; touch $it && rm -f $it || error_exit "Failed to write to $it_dir"
+dir_validate "${it_dir}" "mount"
+it="${it_dir}/.testfile"; touch $it && rm -f $it || error_exit "Failed to write to $it_dir"
 
 ##
 echo ""; echo "== Obtaining the latest version of ComfyUI (if folder not present)"
@@ -187,7 +188,7 @@ fi
 ##
 echo ""; echo "== Confirm the ComfyUI directory is present and we can write to it"
 it_dir="${COMFYUSER_DIR}/mnt/ComfyUI"
-dir_validate "${it_dir}" force
+dir_validate "${it_dir}" 
 it="${it_dir}/.testfile" && rm -f $it || error_exit "Failed to write to ComfyUI directory as the comfy user"
 
 ##
@@ -195,8 +196,8 @@ echo ""; echo "== Check on BASE_DIRECTORY (if used)"
 if [ "$BASE_DIRECTORY" == "$ignore_value" ]; then BASE_DIRECTORY=""; fi
 if [ ! -z "$BASE_DIRECTORY" ]; then 
   it_dir=$BASE_DIRECTORY
-  dir_validate "${it_dir}" force
-  it=$BASE_DIRECTORY/.testfile && touch $it && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
+  dir_validate "${it_dir}" "mount"
+  it="${it_dir}/.testfile" && touch $it && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
 fi
 
 ##
@@ -206,8 +207,8 @@ if [ ! -d "${it_dir}" ]; then
   echo "";echo "== Creating HF directory"
   mkdir -p ${it_dir}
 fi
-dir_validate "${it_dir}" force
-it=HF/.testfile && rm -f $it || error_exit "Failed to write to HF directory as the comfy user"
+dir_validate "${it_dir}"
+it=${it_dir}/.testfile && rm -f $it || error_exit "Failed to write to HF directory as the comfy user"
 export HF_HOME=${COMFYUSER_DIR}/mnt/HF
 
 # Attempting to support multiple build bases
@@ -219,7 +220,7 @@ export HF_HOME=${COMFYUSER_DIR}/mnt/HF
 echo ""; echo "== if a venv is present, confirm we can write to it"
 it_dir="${COMFYUSER_DIR}/mnt/venv"
 if [ -d "${it_dir}" ]; then
-  dir_validate "${it_dir}" force
+  dir_validate "${it_dir}"
   it=${it_dir}/.testfile && rm -f $it || error_exit "Failed to write to venv directory as the comfy user"
   # use the special value to mark existing venv if the marker is not present
   it=${it_dir}/.build_base.txt; if [ ! -f $it ]; then echo $BUILD_BASE_SPECIAL > $it; fi
@@ -259,7 +260,7 @@ fi
 ##
 echo ""; echo "== Confirming venv is writeable"
 it_dir="${COMFYUSER_DIR}/mnt/venv"
-dir_validate "${it_dir}" force
+dir_validate "${it_dir}"
 it="${it_dir}/.testfile" && rm -f $it || error_exit "Failed to write to venv directory as the comfy user"
 
 ##
@@ -354,7 +355,7 @@ fi
 # If we are using a base directory... 
 if [ ! -z "$BASE_DIRECTORY" ]; then
   if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY ($BASE_DIRECTORY) not found or not a directory"; fi
-  dir_validate "${BASE_DIRECTORY}" force
+  dir_validate "${BASE_DIRECTORY}" "mount"
   it=${BASE_DIRECTORY}/.testfile && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
 
   echo ""; echo "== Setting base_directory: $BASE_DIRECTORY"
@@ -385,6 +386,9 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
           echo "  -- $in not found, $out exists, skipping"
         fi
     fi
+
+    dir_validate "$out"
+    it=${out}/.testfile && rm -f $it || error_exit "Failed to write to $out"
   done
 
   # Next check that all expected directories in models are present and create them otherwise
@@ -397,6 +401,9 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     else
       echo "    -- $it already exists, skipping"
     fi
+
+    dir_validate "$it"
+    it=${it}/.testfile && rm -f $it || error_exit "Failed to write to $it"
   done
 
   # and extend the command line using COMFY_CMDLINE_EXTRA (export to be accessible to child processes such as the user script)

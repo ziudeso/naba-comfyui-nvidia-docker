@@ -78,7 +78,6 @@ RUN useradd -u 1025 -d /home/comfytoo -g comfytoo -s /bin/bash -m comfytoo \
 ENV COMFYUSER_DIR="/comfy"
 RUN mkdir -p ${COMFYUSER_DIR}
 RUN it="/etc/comfyuser_dir"; echo ${COMFYUSER_DIR} > $it && chmod 555 $it
-RUN it="/etc/comfy_force_user"; touch $it && chmod 555 $it
 
 ENV NVIDIA_DRIVER_CAPABILITIES="all"
 ENV NVIDIA_VISIBLE_DEVICES=all
