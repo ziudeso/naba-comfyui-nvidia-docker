@@ -165,7 +165,7 @@ dir_validate() { # arg1 = directory to validate / arg2 = "mount" or ""; a "mount
   if [ "$(stat -c %u:%g "$testdir")" != "${WANTED_UID}:${WANTED_GID}" ]; then
     xtra_txt=" -- recommended to start with the FORCE_CHOWN=yes environment varable enabled"
     if [ "A$2" == "Amount" ]; then
-      xtra_txt=" -- FORCE_CHOWN will not work for this folder, it is a PATH mounted at container start"
+      xtra_txt=" -- FORCE_CHOWN will not work for this folder, it is a PATH mounted at container startup and requires a manual fix: chown -R ${WANTED_UID}:${WANTED_GID} foldername"
     fi
     error_exit "Directory $testdir owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$testdir")$xtra_txt"
   fi
