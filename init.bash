@@ -123,7 +123,7 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   # The script is started as comfytoo -- UID/GID 1025/1025
 
   if [ ! -z $FORCE_CHOWN ]; then # any value works, empty value means disabled
-    echo "-- Force user mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
+    echo "-- Force chown mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
     sudo touch /etc/comfy_force_chown
   fi
 
