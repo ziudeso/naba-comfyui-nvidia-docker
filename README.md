@@ -45,6 +45,8 @@ podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/c
 
 <h1>ComfyUI (NVIDIA) Docker</h1>
 
+**Latest Release:** 202503wip
+
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI/tree/master) is a Stable Diffusion WebUI. 
 With the addition in August 2024 of a [Flux example](https://comfyanonymous.github.io/ComfyUI_examples/flux/), I created this container builder to test it. 
 This container was built to benefit from the process isolation that containers bring and to drop the container's main process privileges to that of a regular user (the container's `comfy` user, which is `sudo` capable).
@@ -178,6 +180,7 @@ When starting, the container image executes the `init.bash` script that performs
   - **Make sure to use the `COMFY_CMDLINE_EXTRA` environment variable to pass the `--basedir` option to the tool if running the tool from within this script**
 - Run the ComfyUI WebUI. For the exact command run, please see the last line of `init.bash`
 
+If the `FORCE_CHOWN` environment variable is set to any non empty value (ex: "yes"), the script will force change directory ownership as the `comfy` user during script startup (might be slow).
 
 ## 2.1. docker run
 
@@ -483,6 +486,15 @@ When following the rules defined at https://github.com/ltdrdata/ComfyUI-Manager?
 You will prefer ' weak ' if you manually install or alter custom nodes.
 **WARNING: Using `normal-` will prevent access to the WebUI.**
 
+### 5.3.5. FORCE_CHOWN
+
+The `FORCE_CHOWN` environment variable is used to force change directory ownership as the `comfy` user during script startup (might be slow).
+It must be set with a non empty value (for example "yes: `-e FORCE_CHOWN=yes`) to be enabled.
+
+When set, it will "force chown" every sub-folder in the `run` and `basedir` folders when it first attempt to access them before verifying they are owned by the proper user.
+
+This was added to support users who attempt to do mounts of the `run` and `basedir` folders onto other hosts which might not respect the UID/GID of the `comfy` user.
+
 ## 5.4. ComfyUI Manager & Security levels
 
 [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager/) is installed and available in the container.
@@ -526,6 +538,9 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 - Installing a custom node from git
 
 ### 5.6.1. Windows: WSL2 and podman
+
+**Note:** per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26, must use `-v /usr/lib/wsl:/usr/lib/wsl -e LD_LIBRARY_PATH=/usr/lib/wsl/lib` to passthrough the nvidia drivers at least related to opengl.
+
 
 The container can be used on Windows using "Windows Subsystem for Linux 2" (WSL2). 
 For additional details on WSL, please read https://learn.microsoft.com/en-us/windows/wsl/about
@@ -587,7 +602,7 @@ mkdir run basedir
 # - the ComfyUI-Manager security levels will be set to "normal"
 # - we will expose the WebUI to http://127.0.0.1:8188
 # please see other sections of this README.md for options
-podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia docker.io/mmartial/comfyui-nvidia-docker:latest
+podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/comfy/mnt -v `pwd`/basedir:/basedir -v /usr/lib/wsl:/usr/lib/wsl -e LD_LIBRARY_PATH=/usr/lib/wsl/lib-e WANTED_UID=`id -u` -e WANTED_GID=`id -g` -e BASE_DIRECTORY=/basedir -e SECURITY_LEVEL=normal -p 127.0.0.1:8188:8188 --name comfyui-nvidia docker.io/mmartial/comfyui-nvidia-docker:latest
 ```
 
 Once started, go to http://127.0.0.1:8188 and enjoy your first workflow (the bottle example). With this workflow, ComfyUI-Manager should offer to download the model. but since your browser runs on the Windows side, we will need to move the downloaded file to the Ubuntu VM. In another `Ubuntu` terminal, run (adapt `USER`): `mv /mnt/c/Users/USER/Downloads/v1-5-pruned-emaonly-fp16.safetensors basedir/models/checkpoints/`. You will see that `basedir` and `run` are owned by your `USER`.
@@ -657,6 +672,7 @@ Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED
 
 # 7. Changelog
 
+- 202503wip: Added checks for directory ownership + added `FORCE_CHOWN` + added libEGL/Vulkan ICD loaders and libraries (per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26) including extension to Windows usage section related to this addition
 - 20250227: Simplified user switching logic using the `comfytoo` user as the default entry point user that will set up the `comfy` user
 - 20250216: Fix issue with empty `BASE_DIRECTORY` variable
 - 20250202: Added `BASE_DIRECTORY` variable
