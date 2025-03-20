@@ -83,7 +83,6 @@ if [ -z "$WANTED_GID" ]; then echo "-- No WANTED_GID provided, using comfy user 
 if [ -z "$SECURITY_LEVEL" ]; then SECURITY_LEVEL=$cmd_seclvl; fi
 if [ -z "$SECURITY_LEVEL" ]; then echo "-- No SECURITY_LEVEL provided, using comfy default of normal"; SECURITY_LEVEL="normal"; fi
 
-
 # Get base directory
 if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$cmd_basedir; fi
 if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$ignore_value; fi
@@ -120,10 +119,15 @@ echo "  gid: $new_gid / WANTED_GID: $WANTED_GID"
 
 # comfytoo is a specfiic user not existing by default on ubuntu, we can check its whomai
 if [ "A${whoami}" == "Acomfytoo" ]; then 
+  echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
   # The script is started as comfytoo -- UID/GID 1025/1025
 
+  if [ ! -z $FORCE_CHOWN ]; then # any value works, empty value means disabled
+    echo "-- Force chown mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
+    sudo touch /etc/comfy_force_chown
+  fi
+
   # We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
-  echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
   # using usermod for the already create comfy user, knowing it is not already in use
   # per usermod manual: "You must make certain that the named user is not executing any processes when this command is being executed"
   sudo groupmod -o -g ${WANTED_GID} comfy || error_exit "Failed to set GID of comfy user"
@@ -145,51 +149,89 @@ if [ "$WANTED_UID" != "$new_uid" ]; then error_exit "comfy MUST be running as UI
 # We are therefore running as comfy
 echo ""; echo "== Running as comfy"
 
-# Confirm we can write to the user directory
-echo "== Testing write access as the comfy user to the run directory"
-it=${COMFYUSER_DIR}/mnt/.testfile; touch $it && rm -f $it || error_exit "Failed to write to ${COMFYUSER_DIR}/mnt"
+########## 'comfy' specific section below
 
-# Obtain the latest version of ComfyUI if not already present
-cd ${COMFYUSER_DIR}/mnt
+dir_validate() { # arg1 = directory to validate / arg2 = "mount" or ""; a "mount" can not be chmod'ed
+  testdir=$1
+
+  if [ ! -d "$testdir" ]; then error_exit "Directory $testdir not found (or not a directory)"; fi
+
+  if [ "A$2" == "A" ] && [ -f /etc/comfy_force_chown ]; then
+    echo "  ++ Attempting to recursively set ownership of $testdir to ${WANTED_UID}:${WANTED_GID} (might take a long time)"
+    sudo chown -R ${WANTED_UID}:${WANTED_GID} "$testdir" || error_exit "Failed to set owner of $testdir"
+  fi
+
+  # check if the directory is owned by WANTED_UID/WANTED_GID
+  if [ "$(stat -c %u:%g "$testdir")" != "${WANTED_UID}:${WANTED_GID}" ]; then
+    xtra_txt=" -- recommended to start with the FORCE_CHOWN=yes environment varable enabled"
+    if [ "A$2" == "Amount" ]; then
+      xtra_txt=" -- FORCE_CHOWN will not work for this folder, it is a PATH mounted at container startup and requires a manual fix: chown -R ${WANTED_UID}:${WANTED_GID} foldername"
+    fi
+    error_exit "Directory $testdir owned by unexpected user/group, expected ${WANTED_UID}:${WANTED_GID}, actual $(stat -c %u:%g "$testdir")$xtra_txt"
+  fi
+
+  if [ ! -w "$testdir" ]; then error_exit "Directory $testdir not writeable"; fi
+  if [ ! -x "$testdir" ]; then error_exit "Directory $testdir not executable"; fi
+  if [ ! -r "$testdir" ]; then error_exit "Directory $testdir not readable"; fi
+}
+
+## Path: ${COMFYUSER_DIR}/mnt
+echo "== Testing write access as the comfy user to the run directory"
+it_dir="${COMFYUSER_DIR}/mnt"
+dir_validate "${it_dir}" "mount"
+it="${it_dir}/.testfile"; touch $it && rm -f $it || error_exit "Failed to write to $it_dir"
+
+##
+echo ""; echo "== Obtaining the latest version of ComfyUI (if folder not present)"
+cd $it_dir # ${COMFYUSER_DIR}/mnt -- stay here for the following checks/setups
 if [ ! -d "ComfyUI" ]; then
   echo ""; echo "== Cloning ComfyUI"
   git clone https://github.com/comfyanonymous/ComfyUI.git ComfyUI || error_exit "ComfyUI clone failed"
 fi
 
-# Confirm the ComfyUI directory is present and we can write to it
-if [ ! -d "ComfyUI" ]; then error_exit "ComfyUI not found"; fi
-it=ComfyUI/.testfile && rm -f $it || error_exit "Failed to write to ComfyUI directory as the comfy user"
+##
+echo ""; echo "== Confirm the ComfyUI directory is present and we can write to it"
+it_dir="${COMFYUSER_DIR}/mnt/ComfyUI"
+dir_validate "${it_dir}" 
+it="${it_dir}/.testfile" && rm -f $it || error_exit "Failed to write to ComfyUI directory as the comfy user"
 
-# Check on BASE_DIRECTORY
+##
+echo ""; echo "== Check on BASE_DIRECTORY (if used)"
 if [ "$BASE_DIRECTORY" == "$ignore_value" ]; then BASE_DIRECTORY=""; fi
 if [ ! -z "$BASE_DIRECTORY" ]; then 
-  if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY ($BASE_DIRECTORY) not found or not a directory"; fi
-  it=$BASE_DIRECTORY/.testfile && touch $it && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
+  it_dir=$BASE_DIRECTORY
+  dir_validate "${it_dir}" "mount"
+  it="${it_dir}/.testfile" && touch $it && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
 fi
 
-# Create the HugginFace directory
-if [ ! -d HF ]; then
+##
+echo ""; echo "== Validate/Create HugginFace directory"
+it_dir="${COMFYUSER_DIR}/mnt/HF"
+if [ ! -d "${it_dir}" ]; then
   echo "";echo "== Creating HF directory"
-  mkdir -p HF
+  mkdir -p ${it_dir}
 fi
+dir_validate "${it_dir}"
+it=${it_dir}/.testfile && rm -f $it || error_exit "Failed to write to HF directory as the comfy user"
 export HF_HOME=${COMFYUSER_DIR}/mnt/HF
-
-# Confirm the HF directory is present and we can write to it
-if [ ! -d "HF" ]; then error_exit "HF not found"; fi
-it=HF/.testfile && rm -f $it || error_exit "Failed to write to HF directory as the comfy user"
 
 # Attempting to support multiple build bases
 # the venv directory is specific to the build base
 # we are placing a marker file in the venv directory to match it to a build base
 # if the marker is not for container's build base, we rename the venv directory to avoid conflicts
 
-# if a venv is present, confirm we can write to it
-if [ -d "venv" ]; then
-  it=venv/.testfile && rm -f $it || error_exit "Failed to write to venv directory as the comfy user"
+## Current path: ${COMFYUSER_DIR}/mnt
+echo ""; echo "== if a venv is present, confirm we can write to it"
+it_dir="${COMFYUSER_DIR}/mnt/venv"
+if [ -d "${it_dir}" ]; then
+  dir_validate "${it_dir}"
+  it=${it_dir}/.testfile && rm -f $it || error_exit "Failed to write to venv directory as the comfy user"
   # use the special value to mark existing venv if the marker is not present
-  it=venv/.build_base.txt; if [ ! -f $it ]; then echo $BUILD_BASE_SPECIAL > $it; fi
+  it=${it_dir}/.build_base.txt; if [ ! -f $it ]; then echo $BUILD_BASE_SPECIAL > $it; fi
 fi
 
+##
+echo ""; echo "== Matching any existing venv to container's BUILD_BASE (${BUILD_BASE})"
 SWITCHED_VENV=True # this is a marker to indicate that we have switched to a different venv, which is set unless we re-use the same venv as before (see below)
 # Check for an existing venv; if present, is it the proper one -- ie does its .build_base.txt match the container's BUILD_BASE_FILE?
 if [ -d venv ]; then
@@ -211,18 +253,27 @@ if [ -d venv ]; then
   fi
 fi
 
-# virtualenv for installation
+##
+echo ""; echo "== Create virtualenv for installation (if not present)"
 if [ ! -d "venv" ]; then
   echo ""; echo "== Creating virtualenv"
   python3 -m venv venv || error_exit "Virtualenv creation failed"
   echo $BUILD_BASE > venv/.build_base.txt
 fi
 
-# Activate the virtualenv and upgrade pip
-if [ ! -f ${COMFYUSER_DIR}/mnt/venv/bin/activate ]; then error_exit "virtualenv not created, please erase any venv directory"; fi
-echo ""; echo "== Activating virtualenv"
-source ${COMFYUSER_DIR}/mnt/venv/bin/activate || error_exit "Virtualenv activation failed"
-echo ""; echo "== Upgrading pip"
+##
+echo ""; echo "== Confirming venv is writeable"
+it_dir="${COMFYUSER_DIR}/mnt/venv"
+dir_validate "${it_dir}"
+it="${it_dir}/.testfile" && rm -f $it || error_exit "Failed to write to venv directory as the comfy user"
+
+##
+echo ""; echo "== Activate the virtualenv and upgrade pip"
+it="${it_dir}/bin/activate"
+if [ ! -f "$it" ]; then error_exit "virtualenv not created, please erase any venv directory"; fi
+echo ""; echo "  == Activating virtualenv"
+source "$it" || error_exit "Virtualenv activation failed"
+echo ""; echo "  == Upgrading pip"
 pip3 install --upgrade pip || error_exit "Pip upgrade failed"
 
 # extent the PATH to include the user local bin directory
@@ -248,8 +299,8 @@ fi
 
 # Install ComfyUI's requirements
 cd ComfyUI
-it=${COMFYUSER_DIR}/mnt/comfyui-${BUILD_BASE}-requirements.txt; if [ ! -f $it ]; then it=requirements.txt; fi
-echo ""; echo "== Installing/Updating from ComfyUI's requirements (using: $it)"
+it=requirements.txt
+echo ""; echo "== Installing/Updating from ComfyUI's requirements"
 pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r $it || error_exit "ComfyUI requirements install/upgrade failed"
 echo ""; echo "== Installing Huggingface Hub"
 pip3 install --trusted-host pypi.org --trusted-host files.pythonhosted.org -U "huggingface_hub[cli]" || error_exit "HuggingFace Hub CLI install/upgrade failed"
@@ -308,6 +359,7 @@ fi
 # If we are using a base directory... 
 if [ ! -z "$BASE_DIRECTORY" ]; then
   if [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY ($BASE_DIRECTORY) not found or not a directory"; fi
+  dir_validate "${BASE_DIRECTORY}" "mount"
   it=${BASE_DIRECTORY}/.testfile && rm -f $it || error_exit "Failed to write to BASE_DIRECTORY"
 
   echo ""; echo "== Setting base_directory: $BASE_DIRECTORY"
@@ -338,6 +390,9 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
           echo "  -- $in not found, $out exists, skipping"
         fi
     fi
+
+    dir_validate "$out"
+    it=${out}/.testfile && rm -f $it || error_exit "Failed to write to $out"
   done
 
   # Next check that all expected directories in models are present and create them otherwise
@@ -350,6 +405,9 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     else
       echo "    -- $it already exists, skipping"
     fi
+
+    dir_validate "$it"
+    it=${it}/.testfile && rm -f $it || error_exit "Failed to write to $it"
   done
 
   # and extend the command line using COMFY_CMDLINE_EXTRA (export to be accessible to child processes such as the user script)

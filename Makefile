@@ -5,7 +5,7 @@ DOCKER_CMD=docker
 DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
 DOCKER_BUILD_ARGS=
 
-COMFYUI_NVIDIA_DOCKER_VERSION=20250227
+COMFYUI_NVIDIA_DOCKER_VERSION=20250320
 
 COMFYUI_CONTAINER_NAME=comfyui-nvidia-docker
 
@@ -86,7 +86,9 @@ docker_rmi:
 # user the highest numbered entry
 #LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -1)
 # use the previous to last entry as the candidate: 12.8 is for 50xx series GPUs, not making it the default yet)
-LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -2 | head -1)
+#LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -2 | head -1)
+# use the 2nd to last entry as the candidate
+LATEST_ENTRY=$(shell echo ${DOCKER_ALL} | sed -e 's/ /\n/g' | tail -3 | head -1)
 
 LATEST_CANDIDATE=$(shell echo ${COMFYUI_CONTAINER_NAME}:${LATEST_ENTRY})
 
@@ -103,7 +105,6 @@ docker_tag:
 
 DOCKERHUB_READY=$(shell for i in ${DOCKER_ALL}; do image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:$$i"; image1=$$image-${COMFYUI_NVIDIA_DOCKER_VERSION}; image2=$$image-latest; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image1; then echo $$image1; fi; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image2; then echo $$image2; fi; done)
 DOCKERHUB_READY_LATEST=$(shell image="${DOCKERHUB_REPO}/${COMFYUI_CONTAINER_NAME}:latest"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q $$image; then echo $$image; else echo ""; fi)
-
 
 docker_push:
 	@if [ `echo ${DOCKERHUB_READY} | wc -w` -eq 0 ]; then echo "No images to push"; exit 1; fi
@@ -125,3 +126,37 @@ docker_rmi_hub:
 	@for i in ${DOCKERHUB_READY} ${DOCKERHUB_READY_LATEST}; do docker rmi $$i; done
 	@echo ""; echo " ** Remaining images with the build label:"
 	@make docker_tag_list
+
+##### Maintainer
+# - Create a new branch on GitHub that match the expected release tag, pull and checkout that branch
+# - In the Makefile, update the CCOMFYUI_NVIDIA_DOCKER_VERSION variable to match the final release tag
+# - Build the images:
+#   % make build
+# - Confirm tags are correct, esp. latest (be ready to Ctrl+C before re-running)
+#   % make docker_tag_list
+# - Push the images (here too be ready to Ctrl+C before re-running)
+#   % make docker_push
+# - Update the README.md file with the new release tag + version history
+# - Commit and push the changes to GitHub (in the branch created at the beginning)
+# - On Github, "Open a pull request",
+#   use the value of COMFYUI_NVIDIA_DOCKER_VERSION for the release name (ie the YYYYMMDD value)
+#   add PR modifications as a summry of the content of the commits,
+#   create the PR, add a self-approve message, merge and delete the branch
+# - on the build system, checkout main and pull the changes
+#   % git checkout main
+#   % git pull
+# - delete the temporary branch (named after the COMFYUI_NVIDIA_DOCKER_VERSION value)
+#   % git branch -d YYYYMMDD
+# - Tag the release on GitHub
+#   % git tag YYYYMMDD
+#   % git push origin YYYYMMDD
+# - Create a release on GitHub using the YYYYMMDD tag, add the release notes, and publish
+# - Erase build logs
+#   % rm *.log
+# - Erase the buildx builder
+#   % make docker_rmi_buildx
+# - Manually check for local images
+#   % make docker_rmi
+#   % make docker_rmi_hub
+# - Update the Unraid template if needed with new release and environment variables (remember to push to GitHub)
+# - Update the Docker Hub template if needed with tag information(esp when latest changes or is about to change)
