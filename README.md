@@ -19,6 +19,15 @@
   - including [Unraid](https://unraid.net) compatible images
 - open-source: build it yourself using the corresponding `Dockerfile` present in the directory of the same name and review the `init.bash` (i.e. the setup logic)
 
+<h2>About "latest" tag</h2>
+
+`latest` currently points to the `ubuntu24_cuda12.5.1` tag.
+The next release will replace `latest` with `ubuntu24_cuda12.6.3`.
+
+When this happens some installed `custom_nodes` will need to be fixed (`Try Fix`) for `Import Failed` nodes in `ComfyUI-Manager`.
+This manual step should only have to be performed once per `latest` tag update to a different Ubuntu+CUDA version.
+
+To avoid `latest` changing the Ubuntu or CUDA version of your container, manually select the docker image tag from the list of available tags.
 
 <h2>Quick Start</h2>
 
@@ -45,8 +54,6 @@ podman run --rm -it --userns=keep-id --device nvidia.com/gpu=all -v `pwd`/run:/c
 
 <h1>ComfyUI (NVIDIA) Docker</h1>
 
-**Latest Release:** 202503wip
-
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI/tree/master) is a Stable Diffusion WebUI. 
 With the addition in August 2024 of a [Flux example](https://comfyanonymous.github.io/ComfyUI_examples/flux/), I created this container builder to test it. 
 This container was built to benefit from the process isolation that containers bring and to drop the container's main process privileges to that of a regular user (the container's `comfy` user, which is `sudo` capable).
@@ -56,14 +63,15 @@ The container size (usually over 4GB) contains the required components on an Ubu
 Multiple images are available. Each image's name contains a tag reflecting its core components. For example, `ubuntu24_cuda12.5.1` is based on Ubuntu 24.04 with CUDA 12.5.1. Depending on the version of the Nvidia drivers installed, the Docker container runtime will only support a certain version of CUDA. For example, Driver 550 supports up to CUDA 12.4 and will not be able to run the CUDA 12.4.1 or 12.5.1 versions. The recently released 570 driver supports up to CUDA 12.8 and RTX 50xx GPUs.
 Use the `nvidia-smi` command on your system to obtain the `CUDA Version:` entry. It will show you the maximum CUDA version supported by your driver. If the printout shows `CUDA Version: 12.6`, your driver will support up to the `cuda12.5.1` version of the container (below the maximum CUDA version supported by the driver) but not `cuda12.8`. With this information, check for a usable `tag`  in the table below.
 
-The `latest` tag will always point to the most up-to-date build (i.e., the most recent OS+CUDA). 
+The `latest` tag will point to a most up-to-date build (i.e., the most recent OS+CUDA). 
 If this version is incompatible with your container runtime, please see the list of alternative builds.
 
 | tag | aka | note |
 | --- | --- | --- |
 | ubuntu22_cuda12.3.2-latest | | | 
 | ubuntu22_cuda12.4.1-latest | | | 
-| ubuntu24_cuda12.5.1-latest | latest | | 
+| ubuntu24_cuda12.5.1-latest | `latest` | `latest` up to `20250320` release |
+| ubuntu24_cuda12.6.3-latest | | next release's `latest`|
 | ubuntu24_cuda12.8-latest | | RTX 50xx beta |
 
 For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
@@ -488,12 +496,14 @@ You will prefer ' weak ' if you manually install or alter custom nodes.
 
 ### 5.3.5. FORCE_CHOWN
 
-The `FORCE_CHOWN` environment variable is used to force change directory ownership as the `comfy` user during script startup (might be slow).
-It must be set with a non empty value (for example "yes: `-e FORCE_CHOWN=yes`) to be enabled.
+The `FORCE_CHOWN` environment variable is used to force change directory ownership as the `comfy` user during script startup (this process might be slow).
+
+This option was added to support users who mount the `run` and `basedir` folders onto other hosts which might not respect the UID/GID of the `comfy` user.
+
+`FORCE_CHOWN` must be set with a non empty value (for example "yes: `-e FORCE_CHOWN=yes`) to be enabled.
 
 When set, it will "force chown" every sub-folder in the `run` and `basedir` folders when it first attempt to access them before verifying they are owned by the proper user.
 
-This was added to support users who attempt to do mounts of the `run` and `basedir` folders onto other hosts which might not respect the UID/GID of the `comfy` user.
 
 ## 5.4. ComfyUI Manager & Security levels
 
@@ -539,7 +549,7 @@ See [extras/FAQ.md] for additional FAQ topics, among which:
 
 ### 5.6.1. Windows: WSL2 and podman
 
-**Note:** per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26, must use `-v /usr/lib/wsl:/usr/lib/wsl -e LD_LIBRARY_PATH=/usr/lib/wsl/lib` to passthrough the nvidia drivers at least related to opengl.
+**Note:** per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26, you must use `-v /usr/lib/wsl:/usr/lib/wsl -e LD_LIBRARY_PATH=/usr/lib/wsl/lib` to passthrough the nvidia drivers related to opengl.
 
 
 The container can be used on Windows using "Windows Subsystem for Linux 2" (WSL2). 
@@ -672,7 +682,7 @@ Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED
 
 # 7. Changelog
 
-- 202503wip: Added checks for directory ownership + added `FORCE_CHOWN` + added libEGL/Vulkan ICD loaders and libraries (per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26) including extension to Windows usage section related to this addition
+- 20250320: Made CUDA 12.6.3 image which will be the new `latest` as of the next release + Added checks for directory ownership + added `FORCE_CHOWN` + added libEGL/Vulkan ICD loaders and libraries (per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26) including extension to Windows usage section related to this addition
 - 20250227: Simplified user switching logic using the `comfytoo` user as the default entry point user that will set up the `comfy` user
 - 20250216: Fix issue with empty `BASE_DIRECTORY` variable
 - 20250202: Added `BASE_DIRECTORY` variable

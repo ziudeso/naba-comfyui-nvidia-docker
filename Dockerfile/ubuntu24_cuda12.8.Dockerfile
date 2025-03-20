@@ -46,12 +46,19 @@ RUN apt-get update -y --fix-missing \
     python3-venv \
     git \
     sudo \
-    # Adding libGL (used by a few common nodes)
-    libgl1 \
     libglib2.0-0 \
-    # Adding FFMPEG (for video generation workflow)
-    ffmpeg \
   && apt-get clean
+
+# Add libEGL ICD loaders and libraries + Vulkan ICD loaders and libraries
+# Per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26
+RUN apt install -y libglvnd0 libglvnd-dev libegl1-mesa-dev libvulkan1 libvulkan-dev ffmpeg \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* \
+  && mkdir -p /usr/share/glvnd/egl_vendor.d \
+  && echo '{"file_format_version":"1.0.0","ICD":{"library_path":"libEGL_nvidia.so.0"}}' > /usr/share/glvnd/egl_vendor.d/10_nvidia.json \
+  && mkdir -p /usr/share/vulkan/icd.d \
+  && echo '{"file_format_version":"1.0.0","ICD":{"library_path":"libGLX_nvidia.so.0","api_version":"1.3"}}' > /usr/share/vulkan/icd.d/nvidia_icd.json
+ENV MESA_D3D12_DEFAULT_ADAPTER_NAME="NVIDIA"
 
 ENV BUILD_FILE="/etc/image_base.txt"
 ARG BASE_DOCKER_FROM
@@ -86,6 +93,7 @@ ENV COMFYUSER_DIR="/comfy"
 RUN mkdir -p ${COMFYUSER_DIR}
 RUN it="/etc/comfyuser_dir"; echo ${COMFYUSER_DIR} > $it && chmod 555 $it
 
+ENV NVIDIA_DRIVER_CAPABILITIES="all"
 ENV NVIDIA_VISIBLE_DEVICES=all
 
 EXPOSE 8188
