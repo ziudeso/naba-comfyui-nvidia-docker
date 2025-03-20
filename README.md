@@ -24,10 +24,10 @@
 `latest` currently points to the `ubuntu24_cuda12.5.1` tag.
 The next release will replace `latest` with `ubuntu24_cuda12.6.3`.
 
-When this happens some installed `custom_nodes` will need to be fixed (`Try Fix`) for `Import Failed` nodes in `ComfyUI-Manager`.
-This manual step should only have to be performed once per `latest` tag update to a different Ubuntu+CUDA version.
+When this happens, some installed `custom_nodes` will need to be fixed (`Try Fix`) for `Import Failed` nodes in `ComfyUI-Manager`.
+This manual step should only be needed once per the `latest` tag update to a different Ubuntu+CUDA version.
 
-To avoid `latest` changing the Ubuntu or CUDA version of your container, manually select the docker image tag from the list of available tags.
+To avoid `latest` changing your container's Ubuntu or CUDA version, manually select the docker image tag from the list of available tags.
 
 <h2>Quick Start</h2>
 
