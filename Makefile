@@ -154,9 +154,10 @@ docker_rmi_hub:
 # - Erase build logs
 #   % rm *.log
 # - Erase the buildx builder
-#   % make docker_rmi_buildx
-# - Manually check for local images
+#   % make docker_buildx_rm
+# - Manually check for local images to delete if pushed (and not used locally) -- docker rmi <image_name> [...]
 #   % make docker_rmi
 #   % make docker_rmi_hub
+#   % make docker_tag_list
 # - Update the Unraid template if needed with new release and environment variables (remember to push to GitHub)
 # - Update the Docker Hub template if needed with tag information(esp when latest changes or is about to change)
