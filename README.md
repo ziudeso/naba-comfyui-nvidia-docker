@@ -1,6 +1,6 @@
 <h1>ComfyUI (NVIDIA) Docker</h1>
 
-- runs in [containers](https://blg.gkr.one/20240501-docker101/) for enhanced host OS separation
+- runs in [containers](https://www.gkr.one/blg-20240501-docker101) for enhanced host OS separation
   - work with `docker` (and `compose`) or `podman` using `Windows Subsystem for Linux 2` (WSL2) on Windows (using a Linux Guest Virtual Machine on your Windows host)
 - can run multiple setups with an independent `run` folder (for virtual environment management and source code) shared `basedir` folder (for user files, input, output, custom nodes, models, etc.)
 - drops privileges to a regular user/preserves user permissions with custom UID/GID mapping (the running user's `id -u` and `id -g` as specified on the command line)
@@ -33,7 +33,7 @@ To avoid `latest` changing your container's Ubuntu or CUDA version, manually sel
 
 **Windows users, see the "Windows: WSL2 and podman" section**
 
-Make sure you have the NVIDIA Container Toolkit installed. More details: https://blg.gkr.one/20240404-u24_nvidia_docker_podman/
+Make sure you have the NVIDIA Container Toolkit installed. More details: https://www.gkr.one/blg-20240523-u24-nvidia-docker-podman
 
 To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, and select the `SECURITY_LEVEL`:
 
@@ -74,7 +74,7 @@ If this version is incompatible with your container runtime, please see the list
 | ubuntu24_cuda12.6.3-latest | | next release's `latest`|
 | ubuntu24_cuda12.8-latest | | RTX 50xx beta |
 
-For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/).
+For more details on driver capabilities and how to update those, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://www.gkr.one/blg-20240523-u24-nvidia-docker-podman).
 
 
 During its first run, the container will download ComfyUI from `git` (into the `run/ComfyUI` folder), create a Python virtual environment (in `run/venv`) for all the Python packages needed by the tool, and install [ComfyUI Manager](https://github.com/ltdrdata/ComfyUI-Manager) into ComfyUI's `custom_nodes` directory. 
@@ -140,14 +140,14 @@ This is done to allow end users to have local directory structures for all the s
 To request a different UID/GID at run time, use the `WANTED_UID` and `WANTED_GID` environment variables when calling the container.
 
 Note: 
-- for details on how to set up a Docker to support an NVIDIA GPU on an Ubuntu 24.04 system, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://blg.gkr.one/20240404-u24_nvidia_docker_podman/)
+- for details on how to set up a Docker to support an NVIDIA GPU on an Ubuntu 24.04 system, please see [Setting up NVIDIA docker & podman (Ubuntu 24.04)](https://www.gkr.one/blg-20240523-u24-nvidia-docker-podman)
 - If you are new to ComfyUI, see [OpenArt's ComfyUI Academy](https://openart.ai/workflows/academy)
 - Some ComfyUI examples:
   - [ComfyUI_examples](https://comfyanonymous.github.io/ComfyUI_examples/)
   - [ComfyUI FLUX examples](https://comfyanonymous.github.io/ComfyUI_examples/flux/)
 - Some additional reads:
-  - [FLUX.1[dev] with ComfyUI and Stability Matrix](https://blg.gkr.one/20240810-flux1dev/)
-  - [FLUX.1 LoRA training](https://blg.gkr.one/20240818-flux_lora_training/)
+  - [FLUX.1[dev] with ComfyUI and Stability Matrix](https://www.gkr.one/blg-20240810-flux1dev)
+  - [FLUX.1 LoRA training](https://www.gkr.one/blg-20240818-flux-lora-training)
 
 # 2. Running the container
 
@@ -201,7 +201,7 @@ docker run --rm -it --runtime nvidia --gpus all -v `pwd`/run:/comfy/mnt -v `pwd`
 
 ## 2.2. podman
 
-It is also possible to run the tool using `podman`. Before doing so, ensure the Container Device Interface (CDI) is properly set for your driver. Please see https://blg.gkr.one/20240404-u24_nvidia_docker_podman/ for instructions.
+It is also possible to run the tool using `podman`. Before doing so, ensure the Container Device Interface (CDI) is properly set for your driver. Please see https://www.gkr.one/blg-20240523-u24-nvidia-docker-podman for instructions.
 To run the container on an NVIDIA GPU, mount the specified directory, expose only to `localhost` on port `8188` (remove `127.0.0.1` to expose to your subnet, and change the port by altering the `-p local:container` port mapping), pass the calling user's UID and GID to the container, provide a `BASE_DIRECTORY` and select the `SECURITY_LEVEL`:
 
 ```bash
@@ -250,7 +250,7 @@ Start it with `docker compose up` (with `-detached` to run the container in the 
 
 Please see [docker compose up](https://docs.docker.com/reference/cli/docker/compose/up/) reference manual for additional details.
 
-For users interested in adding it to a [Dockge](https://dockge.kuma.pet/) (a self-hosted Docker Compose stacks management tool ) stack,  please see my [Dockge blog post](https://blg.gkr.one/20240706-dockge/) where we discuss directory and bind mounts (models take a lot of space).
+For users interested in adding it to a [Dockge](https://dockge.kuma.pet/) (a self-hosted Docker Compose stacks management tool ) stack,  please see my [Dockge blog post](https://www.gkr.one/blg-20240706-dockge) where we discuss directory and bind mounts (models take a lot of space).
 
 ## 2.4. First time use
 
@@ -556,7 +556,7 @@ The container can be used on Windows using "Windows Subsystem for Linux 2" (WSL2
 For additional details on WSL, please read https://learn.microsoft.com/en-us/windows/wsl/about
 For additional details on podman, please read https://docs.podman.io/latest/getting_started/
 
-WSL2 is a Linux guest Virtual Machine on a Windows host (for a slightly longer understanding of what this means, please see the first section of https://blg.gkr.one/20240501-docker101/).
+WSL2 is a Linux guest Virtual Machine on a Windows host (for a slightly longer understanding of what this means, please see the first section of https://www.gkr.one/blg-20240501-docker101).
 The started container is Linux based (Ubuntu Linux) that will perform a full installation of ComfyUI from sources.
 Some experience with the Linux and Python command line interface is relevant for any modifictions of the virtual environment of container post container start.
 
@@ -567,7 +567,7 @@ First, follow the steps in Section 2 ("Getting Started with CUDA on WSL 2") of h
 
 Once you have your Ubuntu Virtual Machine installed, start its terminal and follow the instructions to create your new user account (in the rest of this section we will use `USER` to refer to it, adapt as needed) and set a password (which you will use for `sudo` commands). Check your UID and GID using `id`; by default those should be `1000` and `1000`.
 
-Then, from the terminal, run the following commands (for further details on some of the steps below, see https://blg.gkr.one/20240404-u24_nvidia_docker_podman/ ):
+Then, from the terminal, run the following commands (for further details on some of the steps below, see https://www.gkr.one/blg-20240523-u24-nvidia-docker-podman):
 
 ```bash
 # Update the package list & Upgrade the already installed packages
