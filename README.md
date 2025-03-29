@@ -680,6 +680,31 @@ Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED
 
 **After the process complete, you should be presented with the WebUI. Make to delete or rename the script to avoid upgrading ComfyUI at start time, and use ComfyUI Manager instead.**
 
+### using a specific ComfyUI version or SHA
+
+Following the conversation in https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/32
+Use a `user_script.bash` to install a specific version of ComfyUI
+
+```bash
+#!/bin/bash
+
+# Checkout based on SHA (commit) 
+cd /comfy/mnt/ComfyUI
+git checkout SHAvalue
+
+# Install required packages (note that this might cause some downgrades -- some might not be possible)
+source /comfy/mnt/venv/bin/activate
+pip3 install -r requirements.txt
+
+exit 0
+```
+
+Adapt the `SHAvalue` to match your desired version.
+
+Make sure to change file ownership to the user with the `WANTED_UID` and `WANTED_GID` environment variables and to make it executable
+
+**After the process complete, you should be presented with the WebUI. Make sure to delete or rename the script to avoid it being run again.**
+
 # 7. Changelog
 
 - 20250320: Made CUDA 12.6.3 image which will be the new `latest` as of the next release + Added checks for directory ownership + added `FORCE_CHOWN` + added libEGL/Vulkan ICD loaders and libraries (per https://github.com/mmartial/ComfyUI-Nvidia-Docker/issues/26) including extension to Windows usage section related to this addition
