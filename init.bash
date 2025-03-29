@@ -289,12 +289,12 @@ echo -n "  python bin: "; which python3
 echo -n "  pip bin: "; which pip3
 echo -n "  git bin: "; which git
 
-# CUDA 12.8 special case
+# CUDA 12.8 special case -- now 2.7.0 is available in testing
 if [[ "${BUILD_BASE}" == "${BUILD_BASE_RTX50xx}"* ]]; then
-  # https://github.com/comfyanonymous/ComfyUI/discussions/6643
+  # https://github.com/pytorch/pytorch/issues/149044
   echo ""; echo "!! This is a special case, we are going to install the requirements for RTX 50xx series GPUs"
-  echo "  -- Installation CUDA 12.8 Torch from nightly"
-  pip3 install --pre torch torchaudio torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
+  echo "  -- Installation CUDA 12.8 Torch 2.7.0 from test"
+  pip3 install torch==2.7.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/test/cu128
 fi
 
 # Install ComfyUI's requirements
@@ -395,9 +395,20 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     it=${out}/.testfile && rm -f $it || error_exit "Failed to write to $out"
   done
 
-  # Next check that all expected directories in models are present and create them otherwise
+  # Next check that all expected directories in models are present. Create them otherwise
   echo "  == Checking models directory"
-  for i in checkpoints loras vae configs clip_vision style_models diffusers vae_approx gligen upscale_models embeddings hypernetworks photomaker classifiers; do
+  present_directories=""
+  if [ -d ${BASE_DIRECTORY}/models ]; then
+    for i in ${BASE_DIRECTORY}/models/*; do
+      if [ -d $i ]; then  
+        present_directories+="${i##*/} "
+      fi
+    done
+  fi
+
+  present_directories_unique=$(echo "$present_directories" checkpoints loras vae configs clip_vision style_models diffusers vae_approx gligen upscale_models embeddings hypernetworks photomaker classifiers| tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+  for i in ${present_directories_unique}; do
     it=${BASE_DIRECTORY}/models/$i
     if [ ! -d $it ]; then
       echo "    ++ Creating $it"
@@ -421,7 +432,7 @@ echo "";echo -n "== Container directory: "; pwd
 
 # Check for a user custom script
 it=${COMFYUSER_DIR}/mnt/user_script.bash
-echo ""; echo "== Checking for user script: ${it}"
+echo ""; echo "== Checking for primary user script: ${it}"
 if [ -f $it ]; then
   if [ ! -x $it ]; then
     echo "== Attempting to make user script executable"
@@ -432,6 +443,27 @@ if [ -f $it ]; then
   if [ $? -ne 0 ]; then 
     error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
   fi
+fi
+
+# Run independent user scripts if a /userscript_dir is mounted
+it_dir=/userscripts_dir
+if [ -d $it_dir ]; then
+  echo "== Running user scripts from directory: ${it_dir}"
+  torun=$(ls $it_dir/*.sh | sort)
+  # Order the scripts by name to run them in order
+  for i in $torun; do
+    if [ -f $i ]; then
+      if [ ! -x $i ]; then
+        echo "!! ${i} not executable, skipping it"
+        continue
+      fi
+      echo "++ Running user script: ${i}"
+      $i
+      if [ $? -ne 0 ]; then 
+        error_exit "User script failed or exited with an error, stopping further processing"
+      fi
+    fi
+  done
 fi
 
 echo ""; echo "==================="
