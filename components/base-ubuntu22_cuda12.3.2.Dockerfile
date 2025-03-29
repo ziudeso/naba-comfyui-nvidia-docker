@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.3.2-runtime-ubuntu22.04
+FROM nvidia/cuda:12.3.2-devel-ubuntu22.04
 
 # Here, we are using CUDNN8 (devel) -- CUDNN9 is also compatible for CUDA 12.3
 # Adapted from https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.2.2/ubuntu2204/devel/cudnn8/Dockerfile

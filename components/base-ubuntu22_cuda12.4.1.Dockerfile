@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
 # CUDNN9 "runtime" package
 # Adapted from https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubuntu2204/runtime/cudnn/Dockerfile
