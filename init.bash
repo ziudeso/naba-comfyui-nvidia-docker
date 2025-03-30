@@ -117,6 +117,44 @@ echo "== user ($whoami)"
 echo "  uid: $new_uid / WANTED_UID: $WANTED_UID"
 echo "  gid: $new_gid / WANTED_GID: $WANTED_GID"
 
+save_env() {
+  tosave=$1
+  echo "-- Saving environment variables to $tosave"
+  env | sort > "$tosave"
+}
+
+load_env() {
+  tocheck=$1
+  overwrite_if_different=$2
+  ignorelist="HOME PWD USER SHLVL TERM OLDPWD SHELL _ SUDO_COMMAND HOSTNAME LOGNAME MAIL SUDO_GID SUDO_UID SUDO_USER"
+  if [ -f "$tocheck" ]; then
+    echo "-- Loading environment variables from $tocheck (overwrite existing: $overwrite_if_different) (ignorelist: $ignorelist)"
+    while IFS='=' read -r key value; do
+      doit=false
+      # checking if the key is in the ignorelist
+      for i in $ignorelist; do
+        if [ "A$key" = "A$i" ]; then doit=ignore; break; fi
+      done
+      if [ "A$doit" = "Aignore" ]; then continue; fi
+
+      if [ -z "${!key}" ]; then
+        echo "  ++ Setting environment variable $key [$value]"
+        doit=true
+      elif [ "$overwrite_if_different" = true ]; then
+        if [ "${!key}" != "$value" ]; then
+          echo "  @@ Overwriting environment variable $key [${!key}] -> [$value]"
+          doit=true
+        else
+          echo "  == Environment variable $key [$value] already set and value is unchanged"
+        fi
+      fi
+      if [ "$doit" = true ]; then
+        export "$key=$value"
+      fi
+    done < "$tocheck"
+  fi
+}
+
 # comfytoo is a specfiic user not existing by default on ubuntu, we can check its whomai
 if [ "A${whoami}" == "Acomfytoo" ]; then 
   echo "-- Running as comfytoo, will switch comfy to the desired UID/GID"
@@ -134,6 +172,8 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   sudo usermod -o -u ${WANTED_UID} comfy || error_exit "Failed to set UID of comfy user"
   sudo chown -R ${WANTED_UID}:${WANTED_GID} /home/comfy || error_exit "Failed to set owner of /home/comfy"
   sudo chown ${WANTED_UID}:${WANTED_GID} ${COMFYUSER_DIR} || error_exit "Failed to set owner of ${COMFYUSER_DIR}"
+  # Dumping environment variables
+  save_env /tmp/comfytoo_env.txt  
   # restart the script as comfy set with the correct UID/GID this time
   echo "-- Restarting as comfy user with UID ${WANTED_UID} GID ${WANTED_GID}"
   sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
@@ -146,10 +186,16 @@ fi
 if [ "$WANTED_GID" != "$new_gid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${new_uid} GID ${new_gid}"; fi
 if [ "$WANTED_UID" != "$new_uid" ]; then error_exit "comfy MUST be running as UID ${WANTED_UID} GID ${WANTED_GID}, current UID ${new_uid} GID ${new_gid}"; fi
 
+########## 'comfy' specific section below
+
 # We are therefore running as comfy
 echo ""; echo "== Running as comfy"
 
-########## 'comfy' specific section below
+# Load environment variables one by one if they do not exist from /tmp/comfytoo_env.txt
+it=/tmp/comfytoo_env.txt
+if [ ! -f $it ]; then error_exit "Failed to load environment variables from $it"; fi
+echo "-- Loading not already set environment variables from $it"
+load_env $it true
 
 dir_validate() { # arg1 = directory to validate / arg2 = "mount" or ""; a "mount" can not be chmod'ed
   testdir=$1
@@ -449,21 +495,37 @@ fi
 it_dir=/userscripts_dir
 if [ -d $it_dir ]; then
   echo "== Running user scripts from directory: ${it_dir}"
+  
+  # Dumping environment variables
+  it=/tmp/comfy_env.txt
+  echo "-- Dumping environment variables to $it"
+  save_env $it
+
   torun=$(ls $it_dir/*.sh | sort)
   # Order the scripts by name to run them in order
-  for i in $torun; do
-    if [ -f $i ]; then
-      if [ ! -x $i ]; then
-        echo "!! ${i} not executable, skipping it"
+  for it in $torun; do
+    if [ -f $it ]; then
+      userscript_name=$(basename $it)
+      if [ ! -x $it ]; then
+        echo "!! ${it} not executable, skipping it"
         continue
       fi
-      echo "++ Running user script: ${i}"
-      $i
-      if [ $? -ne 0 ]; then 
-        error_exit "User script failed or exited with an error, stopping further processing"
+      userscript_env="/tmp/comfy_${userscript_name}_env.txt"
+      if [ -f $userscript_env ]; then
+        rm -f $userscript_env || error_exit "Failed to remove ${userscript_env}"
       fi
+      
+      echo "++ Running user script: ${it}"
+      $it || error_exit "User script failed or exited with an error, stopping further processing"
+      echo "-- User script completed: ${it}"
+      if [ -f $userscript_env ]; then
+        load_env $userscript_env true
+      fi
+      echo "++ User script completed: ${it}"
+      echo ""
     fi
   done
+
 fi
 
 echo ""; echo "==================="
