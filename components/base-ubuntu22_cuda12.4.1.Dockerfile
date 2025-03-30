@@ -1,7 +1,6 @@
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
-# CUDNN9 "runtime" package
-# Adapted from https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubuntu2204/runtime/cudnn/Dockerfile
+# https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubuntu2204/runtime/cudnn/Dockerfile
 ENV NV_CUDNN_VERSION=9.1.0.70-1
 ENV NV_CUDNN_PACKAGE_NAME=libcudnn9-cuda-12
 ENV NV_CUDNN_PACKAGE="libcudnn9-cuda-12=${NV_CUDNN_VERSION}"

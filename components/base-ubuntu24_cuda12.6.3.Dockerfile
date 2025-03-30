@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.6.3-devel-ubuntu24.04
+FROM nvidia/cuda:12.6.3-runtime-ubuntu24.04
 
 # Extended from https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubuntu2404/runtime/cudnn/Dockerfile
 ENV NV_CUDNN_VERSION=9.5.1.17-1
