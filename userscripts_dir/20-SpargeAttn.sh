@@ -1,10 +1,16 @@
 #!/bin/bash
 
-## requires: 00-pip3dev.sh
+#required: 00-nvidiaDev.sh
+echo "Checking if nvcc is available"
+if ! command -v nvcc &> /dev/null; then
+    echo " !! nvcc not found, canceling run"
+    exit 1
+fi
+
+## requires: 10-pip3Dev.sh
 
 # WiP: not building
 exit 0
-
 
 min_spas_sage_attn_version="0.1.9"
 

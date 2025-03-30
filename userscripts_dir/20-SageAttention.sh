@@ -1,6 +1,15 @@
 #!/bin/bash
 
-## requires: 00-pip3dev.sh
+
+## requires: 00-nvidiaDev.sh
+echo "Checking if nvcc is available"
+if ! command -v nvcc &> /dev/null; then
+    echo " !! nvcc not found, canceling run"
+    exit 1
+fi
+
+## requires: 10-pip3Dev.sh
+
 
 min_sageattention_version="2.1"
 
@@ -53,7 +62,6 @@ if [ ! -d ${BUILD_BASE} ]; then error_exit "${BUILD_BASE} not found"; fi
 cd ${BUILD_BASE}
 
 dd="/comfy/mnt/src/${BUILD_BASE}/SageAttention"
-
 if [ -d $dd ]; then
   echo "SageAttention source already present, deleting $dd to force reinstallation"
   rm -rf $dd
