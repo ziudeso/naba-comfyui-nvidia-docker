@@ -476,21 +476,6 @@ fi
 cd ${COMFYUI_PATH}
 echo "";echo -n "== Container directory: "; pwd
 
-# Check for a user custom script
-it=${COMFYUSER_DIR}/mnt/user_script.bash
-echo ""; echo "== Checking for primary user script: ${it}"
-if [ -f $it ]; then
-  if [ ! -x $it ]; then
-    echo "== Attempting to make user script executable"
-    chmod +x $it || error_exit "Failed to make user script executable"
-  fi
-  echo "  Running user script: ${it}"
-  $it
-  if [ $? -ne 0 ]; then 
-    error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
-  fi
-fi
-
 # Run independent user scripts if a /userscript_dir is mounted
 it_dir=/userscripts_dir
 if [ -d $it_dir ]; then
@@ -527,6 +512,22 @@ if [ -d $it_dir ]; then
   done
 
 fi
+
+# Check for the main custom user script (usually with command line override)
+it=${COMFYUSER_DIR}/mnt/user_script.bash
+echo ""; echo "== Checking for primary user script: ${it}"
+if [ -f $it ]; then
+  if [ ! -x $it ]; then
+    echo "== Attempting to make user script executable"
+    chmod +x $it || error_exit "Failed to make user script executable"
+  fi
+  echo "  Running user script: ${it}"
+  $it
+  if [ $? -ne 0 ]; then 
+    error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
+  fi
+fi
+
 
 echo ""; echo "==================="
 echo "== Running ComfyUI"
