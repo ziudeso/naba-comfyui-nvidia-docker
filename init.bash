@@ -172,7 +172,6 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   sudo usermod -o -u ${WANTED_UID} comfy || error_exit "Failed to set UID of comfy user"
   sudo chown -R ${WANTED_UID}:${WANTED_GID} /home/comfy || error_exit "Failed to set owner of /home/comfy"
   sudo chown ${WANTED_UID}:${WANTED_GID} ${COMFYUSER_DIR} || error_exit "Failed to set owner of ${COMFYUSER_DIR}"
-  # Dumping environment variables
   save_env /tmp/comfytoo_env.txt  
   # restart the script as comfy set with the correct UID/GID this time
   echo "-- Restarting as comfy user with UID ${WANTED_UID} GID ${WANTED_GID}"
@@ -476,57 +475,70 @@ fi
 cd ${COMFYUI_PATH}
 echo "";echo -n "== Container directory: "; pwd
 
+# Saving environment variables
+it=/tmp/comfy_env.txt
+save_env $it
+
+run_userscript() {
+  userscript=$1
+  if [ ! -f $userscript ]; then
+    echo "!! ${userscript} not found, skipping it"
+    return
+  fi
+
+  exec_method=$2
+  if [ "A$exec_method" == "Askip" ]; then
+    if [ ! -x $userscript ]; then
+      echo "!! ${userscript} not executable, skipping it"
+      return
+    fi
+  elif [ "A$exec_method" == "Achmod" ]; then
+    if [ ! -x $userscript ]; then
+      echo "== Attempting to make user script executable"
+      chmod +x $userscript || error_exit "Failed to make user script executable"
+    fi
+  else
+    echo "!! Invalid exec_method: ${exec_method}, skipping it"
+    return
+  fi
+  userscript_name=$(basename $userscript)
+  userscript_env="/tmp/comfy_${userscript_name}_env.txt"
+  if [ -f $userscript_env ]; then
+    rm -f $userscript_env || error_exit "Failed to remove ${userscript_env}"
+  fi
+
+  echo "++ Running user script: ${userscript}"
+  $userscript || error_exit "User script ($userscript) failed or exited with an error, stopping further processing"
+
+  if [ -f $userscript_env ]; then
+    load_env $userscript_env true
+  fi
+  echo "-- User script completed: ${userscript}"
+  echo ""
+}
+
+
 # Run independent user scripts if a /userscript_dir is mounted
 it_dir=/userscripts_dir
 if [ -d $it_dir ]; then
   echo "== Running user scripts from directory: ${it_dir}"
-  
-  # Dumping environment variables
-  it=/tmp/comfy_env.txt
-  echo "-- Dumping environment variables to $it"
-  save_env $it
-
   torun=$(ls $it_dir/*.sh | sort)
   # Order the scripts by name to run them in order
   for it in $torun; do
-    if [ -f $it ]; then
-      userscript_name=$(basename $it)
-      if [ ! -x $it ]; then
-        echo "!! ${it} not executable, skipping it"
-        continue
-      fi
-      userscript_env="/tmp/comfy_${userscript_name}_env.txt"
-      if [ -f $userscript_env ]; then
-        rm -f $userscript_env || error_exit "Failed to remove ${userscript_env}"
-      fi
-      
-      echo "++ Running user script: ${it}"
-      $it || error_exit "User script failed or exited with an error, stopping further processing"
-      echo "-- User script completed: ${it}"
-      if [ -f $userscript_env ]; then
-        load_env $userscript_env true
-      fi
-      echo "++ User script completed: ${it}"
-      echo ""
-    fi
+    run_userscript $it "skip"
   done
-
 fi
+
 
 # Check for the main custom user script (usually with command line override)
 it=${COMFYUSER_DIR}/mnt/user_script.bash
 echo ""; echo "== Checking for primary user script: ${it}"
-if [ -f $it ]; then
-  if [ ! -x $it ]; then
-    echo "== Attempting to make user script executable"
-    chmod +x $it || error_exit "Failed to make user script executable"
-  fi
-  echo "  Running user script: ${it}"
-  $it
-  if [ $? -ne 0 ]; then 
-    error_exit "User script failed or exited with an error (possibly on purpose to avoid running the default ComfyUI command)"
-  fi
-fi
+run_userscript $it "chmod"
+
+
+# Saving environment variables
+it=/tmp/comfy_env_final.txt
+save_env $it
 
 
 echo ""; echo "==================="
