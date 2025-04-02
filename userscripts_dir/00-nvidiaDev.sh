@@ -81,7 +81,7 @@ if [ "A$BUILD_BASE" = "Aubuntu22_cuda12.3.2" ]; then
   export NV_LIBNCCL_DEV_PACKAGE "${NV_LIBNCCL_DEV_PACKAGE_NAME}=${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.3"
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}-1"
 
-  if [ "A$skip_install" = "Afalse" ]; then
+  if [ "A$skip_install" == "Afalse" ]; then
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-3=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -131,7 +131,7 @@ if [ "A$BUILD_BASE" = "Aubuntu22_cuda12.4.1" ]; then
   export NV_LIBNCCL_DEV_PACKAGE="${NV_LIBNCCL_DEV_PACKAGE_NAME}=${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.4"
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
   
-  if [ "A$skip_install" = "Afalse" ]; then
+  if [ "A$skip_install" == "Afalse" ]; then
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-4=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -176,7 +176,7 @@ if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.5.1" ]; then
   export NV_NVPROF_DEV_PACKAGE cuda-nvprof-12-5=${NV_NVPROF_VERSION}
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
 
-  if [ "A$skip_install" = "Afalse" ]; then
+  if [ "A$skip_install" == "Afalse" ]; then
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-5=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -224,7 +224,7 @@ if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.6.3" ]; then
   export NV_LIBNCCL_DEV_PACKAGE="${NV_LIBNCCL_DEV_PACKAGE_NAME}=${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.6"
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
 
-  if [ "A$skip_install" = "Afalse" ]; then
+  if [ "A$skip_install" == "Afalse" ]; then
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
     cuda-cudart-dev-12-6=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -273,7 +273,7 @@ if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.8" ]; then
   export NV_LIBNCCL_DEV_PACKAGE="${NV_LIBNCCL_DEV_PACKAGE_NAME}=${NV_LIBNCCL_DEV_PACKAGE_VERSION}+cuda12.8"
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
 
-  if [ "A$skip_install" = "Afalse" ]; then
+  if [ "A$skip_install" == "Afalse" ]; then
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-8=${NV_CUDA_CUDART_DEV_VERSION} \
