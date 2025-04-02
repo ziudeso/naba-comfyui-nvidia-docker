@@ -57,7 +57,7 @@ fi
 # ubuntu22_cuda12.3.2
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.3.2/ubuntu2204/devel/Dockerfile
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.3.2/ubuntu2204/devel/cudnn9/Dockerfile
-if [ "A$BUILD_BASE" = "Aubuntu22_cuda12.3.2" ]; then
+if [ "A$BUILD_BASE" == "Aubuntu22_cuda12.3.2" ]; then
   # CUDNN installed in base image
   export CHECK_NV_CUDNN_VERSION="9.0.0.312"
   if [ "A$CHECK_NV_CUDNN_VERSION" != "A$NV_CUDNN_VERSION" ]; then error_exit "NV_CUDNN_VERSION mismatch: ${CHECK_NV_CUDNN_VERSION} != ${NV_CUDNN_VERSION}"; fi
@@ -82,6 +82,7 @@ if [ "A$BUILD_BASE" = "Aubuntu22_cuda12.3.2" ]; then
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}-1"
 
   if [ "A$skip_install" == "Afalse" ]; then
+    echo "  ++ Installing CUDA toolkit ${NV_CUDA_LIB_VERSION}"
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-3=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -107,7 +108,7 @@ fi
 # ubuntu22_cuda12.4.1
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubuntu2204/devel/Dockerfile
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.4.1/ubuntu2204/devel/cudnn/Dockerfile
-if [ "A$BUILD_BASE" = "Aubuntu22_cuda12.4.1" ]; then
+if [ "A$BUILD_BASE" == "Aubuntu22_cuda12.4.1" ]; then
   # CUDNN installed in base image
   export CHECK_NV_CUDNN_VERSION="9.1.0.70-1"
   if [ "A$CHECK_NV_CUDNN_VERSION" != "A$NV_CUDNN_VERSION" ]; then error_exit "NV_CUDNN_VERSION mismatch: ${CHECK_NV_CUDNN_VERSION} != ${NV_CUDNN_VERSION}"; fi
@@ -132,6 +133,7 @@ if [ "A$BUILD_BASE" = "Aubuntu22_cuda12.4.1" ]; then
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
   
   if [ "A$skip_install" == "Afalse" ]; then
+    echo "  ++ Installing CUDA toolkit ${NV_CUDA_LIB_VERSION}"
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-4=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -156,7 +158,7 @@ fi
 
 # ubuntu24_cuda12.5.1
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.5.1/ubuntu2404/devel/Dockerfile
-if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.5.1" ]; then
+if [ "A${BUILD_BASE}" == "Aubuntu24_cuda12.5.1" ]; then
   # CUDNN installed in base image
   export CHECK_NV_CUDNN_VERSION="9.3.0.75-1"
   if [ "A$CHECK_NV_CUDNN_VERSION" != "A$NV_CUDNN_VERSION" ]; then error_exit "NV_CUDNN_VERSION mismatch: ${CHECK_NV_CUDNN_VERSION} != ${NV_CUDNN_VERSION}"; fi
@@ -177,6 +179,7 @@ if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.5.1" ]; then
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
 
   if [ "A$skip_install" == "Afalse" ]; then
+    echo "  ++ Installing CUDA toolkit ${NV_CUDA_LIB_VERSION}"
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-5=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -201,7 +204,7 @@ fi
 # ubuntu24_cuda12.6.3
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubuntu2404/devel/Dockerfile
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.6.3/ubuntu2404/devel/cudnn/Dockerfile?ref_type=heads
-if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.6.3" ]; then
+if [ "A${BUILD_BASE}" == "Aubuntu24_cuda12.6.3" ]; then
   # CUDNN installed in base image
   export CHECK_NV_CUDNN_VERSION="9.5.1.17-1"
   if [ "A$CHECK_NV_CUDNN_VERSION" != "A$NV_CUDNN_VERSION" ]; then error_exit "NV_CUDNN_VERSION mismatch: ${CHECK_NV_CUDNN_VERSION} != ${NV_CUDNN_VERSION}"; fi
@@ -225,6 +228,7 @@ if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.6.3" ]; then
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
 
   if [ "A$skip_install" == "Afalse" ]; then
+    echo "  ++ Installing CUDA toolkit ${NV_CUDA_LIB_VERSION}"
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
     cuda-cudart-dev-12-6=${NV_CUDA_CUDART_DEV_VERSION} \
@@ -249,7 +253,7 @@ fi
 # ubuntu24_cuda12.8
 # https://gitlab.com/nvidia/container-images/cuda/-/blob/master/dist/12.8.1/ubuntu2404/devel/Dockerfile?ref_type=heads
 # https://gitlab.com/nvidia/container-images/cuda/-/tree/master/dist/12.8.1/ubuntu2404/devel/cudnn
-if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.8" ]; then
+if [ "A${BUILD_BASE}" == "Aubuntu24_cuda12.8" ]; then
   # CuDNN installed in base image
   export CHECK_NV_CUDNN_VERSION="9.8.0.87-1"
   if [ "A$CHECK_NV_CUDNN_VERSION" != "A$NV_CUDNN_VERSION" ]; then error_exit "NV_CUDNN_VERSION mismatch: ${CHECK_NV_CUDNN_VERSION} != ${NV_CUDNN_VERSION}"; fi
@@ -274,6 +278,7 @@ if [ "A${BUILD_BASE}" = "Aubuntu24_cuda12.8" ]; then
   export NV_CUDNN_PACKAGE_DEV="libcudnn9-dev-cuda-12=${NV_CUDNN_VERSION}"
 
   if [ "A$skip_install" == "Afalse" ]; then
+    echo "  ++ Installing CUDA toolkit ${NV_CUDA_LIB_VERSION}"
     sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
       cuda-cudart-dev-12-8=${NV_CUDA_CUDART_DEV_VERSION} \
