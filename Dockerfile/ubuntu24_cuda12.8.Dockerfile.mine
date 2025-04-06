@@ -94,6 +94,7 @@ RUN useradd -u 1025 -d /home/comfytoo -g comfytoo -s /bin/bash -m comfytoo \
 ARG COMFYUSER_DIR="/comfy"
 ENV COMFYUSER_DIR=${COMFYUSER_DIR}
 
+# writes the name of the comfyui user directory inside the file: /etc/comfyuser_dir (to be used in init.bash)
 RUN mkdir -p ${COMFYUSER_DIR}
 RUN it="/etc/comfyuser_dir"; echo ${COMFYUSER_DIR} > $it && chmod 555 $it
 
