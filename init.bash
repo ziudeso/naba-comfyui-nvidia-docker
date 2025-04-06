@@ -84,9 +84,30 @@ if [ -z "$SECURITY_LEVEL" ]; then SECURITY_LEVEL=$cmd_seclvl; fi
 if [ -z "$SECURITY_LEVEL" ]; then echo "-- No SECURITY_LEVEL provided, using comfy default of normal"; SECURITY_LEVEL="normal"; fi
 
 # Get base directory
+# "If BASE_DIRECTORY is not set, use cmd_basedir as its value."
+# "If BASE_DIRECTORY is still not set, then use ignore_value as a fallback."
+# "If BASE_DIRECTORY is set, and it's not the ignore value, but the directory doesn't actually exist — then exit with an error."
+# if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$cmd_basedir; fi
+# if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$ignore_value; fi
+# if [ ! -z "$BASE_DIRECTORY" ]; then if [ $BASE_DIRECTORY != $ignore_value ] && [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY requested but not found or not a directory ($BASE_DIRECTORY)"; fi; fi
+
+# MINE
+# Step 1: Set BASE_DIRECTORY if not already set
 if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$cmd_basedir; fi
+
+# Step 2: Fallback to ignore_value if still not set
 if [ -z "$BASE_DIRECTORY" ]; then BASE_DIRECTORY=$ignore_value; fi
-if [ ! -z "$BASE_DIRECTORY" ]; then if [ $BASE_DIRECTORY != $ignore_value ] && [ ! -d "$BASE_DIRECTORY" ]; then error_exit "BASE_DIRECTORY requested but not found or not a directory ($BASE_DIRECTORY)"; fi; fi
+
+# Step 3: If BASE_DIRECTORY is set and not the ignore value
+if [ ! -z "$BASE_DIRECTORY" ]; then
+    if [ "$BASE_DIRECTORY" != "$ignore_value" ]; then
+        if [ ! -d "$BASE_DIRECTORY" ]; then
+            echo "BASE_DIRECTORY ($BASE_DIRECTORY) does not exist. Creating it..."
+            mkdir -p "$BASE_DIRECTORY" || error_exit "Failed to create BASE_DIRECTORY ($BASE_DIRECTORY)"
+        fi
+    fi
+fi
+
 
 # extract base image information
 it=/etc/image_base.txt

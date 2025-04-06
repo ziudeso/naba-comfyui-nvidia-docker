@@ -90,7 +90,7 @@ RUN useradd -u 1025 -d /home/comfytoo -g comfytoo -s /bin/bash -m comfytoo \
     && adduser comfytoo sudo
 
 # ENV COMFYUSER_DIR="/comfy"
-# MINE
+# MINE (this is the folder where comfy venv will be installed)
 ARG COMFYUSER_DIR="/comfy"
 ENV COMFYUSER_DIR=${COMFYUSER_DIR}
 
