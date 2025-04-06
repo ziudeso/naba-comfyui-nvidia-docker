@@ -108,12 +108,6 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     fi
 fi
 
-# MINE
-if [ ! -d "$COMFYUSER_DIR" ]; then
-    echo "COMFYUSER_DIR ($COMFYUSER_DIR) does not exist. Creating it..."
-    mkdir -p "$COMFYUSER_DIR" || error_exit "Failed to create COMFYUSER_DIR ($COMFYUSER_DIR)"
-fi
-
 # extract base image information
 it=/etc/image_base.txt
 if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
@@ -125,6 +119,12 @@ if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
 COMFYUSER_DIR=`cat $it`
 echo "-- COMFYUIUSER_DIR: \"${COMFYUSER_DIR}\""
 if test -z ${COMFYUSER_DIR}; then error_exit "Empty COMFYUSER_DIR variable"; fi
+
+# MINE
+if [ ! -d "$COMFYUSER_DIR" ]; then
+    echo "COMFYUSER_DIR ($COMFYUSER_DIR) does not exist. Creating it..."
+    mkdir -p "$COMFYUSER_DIR" || error_exit "Failed to create COMFYUSER_DIR ($COMFYUSER_DIR)"
+fi
 
 # extract build base information
 it=/etc/build_base.txt
