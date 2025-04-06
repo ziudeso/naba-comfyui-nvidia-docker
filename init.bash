@@ -121,12 +121,6 @@ COMFYUSER_DIR=`cat $it`
 echo "-- COMFYUIUSER_DIR: \"${COMFYUSER_DIR}\""
 if test -z ${COMFYUSER_DIR}; then error_exit "Empty COMFYUSER_DIR variable"; fi
 
-# MINE
-if [ ! -d "$COMFYUSER_DIR" ]; then
-    echo "COMFYUSER_DIR ($COMFYUSER_DIR) does not exist. Creating it..."
-    mkdir -p "$COMFYUSER_DIR" || error_exit "Failed to create COMFYUSER_DIR ($COMFYUSER_DIR)"
-fi
-
 # extract build base information
 it=/etc/build_base.txt
 if [ ! -f $it ]; then error_exit "$it missing, exiting"; fi
@@ -152,6 +146,12 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   if [ ! -z $FORCE_CHOWN ]; then # any value works, empty value means disabled
     echo "-- Force chown mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
     sudo touch /etc/comfy_force_chown
+  fi
+  
+  # MINE
+  if [ ! -d "$COMFYUSER_DIR" ]; then
+      echo "COMFYUSER_DIR ($COMFYUSER_DIR) does not exist. Creating it..."
+      mkdir -p "$COMFYUSER_DIR" || error_exit "Failed to create COMFYUSER_DIR ($COMFYUSER_DIR)"
   fi
 
   # We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
