@@ -108,6 +108,11 @@ if [ ! -z "$BASE_DIRECTORY" ]; then
     fi
 fi
 
+# MINE
+if [ ! -d "$COMFYUSER_DIR" ]; then
+    echo "COMFYUSER_DIR ($COMFYUSER_DIR) does not exist. Creating it..."
+    mkdir -p "$COMFYUSER_DIR" || error_exit "Failed to create COMFYUSER_DIR ($COMFYUSER_DIR)"
+fi
 
 # extract base image information
 it=/etc/image_base.txt
@@ -147,12 +152,6 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
     echo "-- Force chown mode enabled, will force change directory ownership as comfy user during script rerun (might be slow)"
     sudo touch /etc/comfy_force_chown
   fi
-  
-  # MINE
-  if [ ! -d "$COMFYUSER_DIR" ]; then
-      echo "COMFYUSER_DIR ($COMFYUSER_DIR) does not exist. Creating it..."
-      mkdir -p "$COMFYUSER_DIR" || error_exit "Failed to create COMFYUSER_DIR ($COMFYUSER_DIR)"
-  fi
 
   # We are altering the UID/GID of the comfy user to the desired ones and restarting as comfy
   # using usermod for the already create comfy user, knowing it is not already in use
@@ -160,7 +159,7 @@ if [ "A${whoami}" == "Acomfytoo" ]; then
   sudo groupmod -o -g ${WANTED_GID} comfy || error_exit "Failed to set GID of comfy user"
   sudo usermod -o -u ${WANTED_UID} comfy || error_exit "Failed to set UID of comfy user"
   sudo chown -R ${WANTED_UID}:${WANTED_GID} /home/comfy || error_exit "Failed to set owner of /home/comfy"
-  sudo chown ${WANTED_UID}:${WANTED_GID} ${COMFYUSER_DIR} || error_exit "Failed to set owner of ${COMFYUSER_DIR}"
+  sudo chown ${WANTED_UID}:${WANTED_GID} ${COMFYUSER_DIR} || error_exit "Failed to set owner of ${COMFYUSER_DIR} to ${WANTED_UID}:${WANTED_GID}"
   # restart the script as comfy set with the correct UID/GID this time
   echo "-- Restarting as comfy user with UID ${WANTED_UID} GID ${WANTED_GID}"
   sudo su comfy $script_fullname ${WANTED_UID} ${WANTED_GID} ${SECURITY_LEVEL} ${BASE_DIRECTORY} ${cmd_cmdline_base} ${cmd_cmdline_extra} || error_exit "subscript failed"
